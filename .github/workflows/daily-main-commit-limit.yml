@@ -44,10 +44,29 @@ jobs:
       startsWith(github.head_ref, 'cursor/') &&
       github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
+    concurrency:
+      group: auto-merge-cursor-pr-main
+      cancel-in-progress: false
     permissions:
       contents: write
       pull-requests: write
     steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch latest main
+        run: git fetch origin main:main
+
+      - name: Re-verify daily commit limit before merge
+        env:
+          GIT_BRANCH: main
+          COMMIT_LIMIT_TZ: Asia/Jakarta
+          MAIN_DAILY_COMMIT_LIMIT: "5"
+          PENDING_MAIN_COMMITS: "1"
+        run: node --experimental-strip-types scripts/check-daily-main-commit-limit.ts
+
       - name: Squash merge cursor PR to main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
