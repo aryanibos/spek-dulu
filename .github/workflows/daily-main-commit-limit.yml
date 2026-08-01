@@ -23,6 +23,12 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
       - name: Verify daily commit limit on main
         env:
           GIT_BRANCH: main
@@ -30,3 +36,23 @@ jobs:
           MAIN_DAILY_COMMIT_LIMIT: "5"
           PENDING_MAIN_COMMITS: ${{ github.event_name == 'pull_request' && '1' || '0' }}
         run: node --experimental-strip-types scripts/check-daily-main-commit-limit.ts
+
+  auto-merge-cursor-pr:
+    needs: enforce-daily-main-commit-limit
+    if: >
+      github.event_name == 'pull_request' &&
+      startsWith(github.head_ref, 'cursor/') &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Squash merge cursor PR to main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge "${{ github.event.pull_request.number }}" \
+            --squash \
+            --delete-branch \
+            --admin

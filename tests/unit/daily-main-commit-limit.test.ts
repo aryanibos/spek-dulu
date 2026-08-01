@@ -47,6 +47,20 @@ describe("daily main commit limit", () => {
 
     expect(result.allowed).toBe(false);
     expect(result.message).toContain("besok pagi");
+    expect(result.message).toContain("6/5");
+  });
+
+  it("shows remaining slots after a pending push", () => {
+    const result = evaluateDailyMainCommitLimit({
+      commitsToday: 4,
+      pendingCommits: 1,
+      limit: 5,
+      timezone: "Asia/Jakarta",
+      now: new Date("2026-08-01T12:00:00.000Z"),
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.message).toContain("Sisa 0");
   });
 
   it("reports zero remaining slots when already at the limit", () => {

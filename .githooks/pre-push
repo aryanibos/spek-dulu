@@ -18,9 +18,15 @@ while read -r _ local_ref local_sha remote_ref remote_sha; do
   fi
 
   if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
-    pending=1
+    pending="$(git rev-list --count "${local_sha}" 2>/dev/null)" || {
+      echo "Could not count pending commits for new main branch push" >&2
+      exit 1
+    }
   else
-    pending="$(git rev-list --count "${remote_sha}..${local_sha}" 2>/dev/null || echo 1)"
+    pending="$(git rev-list --count "${remote_sha}..${local_sha}" 2>/dev/null)" || {
+      echo "Could not count pending commits for main push" >&2
+      exit 1
+    }
   fi
 
   export PENDING_MAIN_COMMITS="$pending"

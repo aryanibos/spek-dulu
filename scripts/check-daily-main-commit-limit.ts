@@ -7,8 +7,16 @@ import {
   evaluateDailyMainCommitLimit,
 } from "../src/lib/git/daily-main-commit-limit.ts";
 
+function assertValidTimezone(timezone: string) {
+  try {
+    new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
+  } catch {
+    throw new Error(`COMMIT_LIMIT_TZ is not a valid IANA timezone: "${timezone}"`);
+  }
+}
+
 function readMainCommitTimestamps(branch: string) {
-  const output = execSync(`git log ${branch} --format=%cI`, {
+  const output = execSync(`git log ${branch} --first-parent --format=%cI`, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -34,6 +42,7 @@ function readPendingMainCommits() {
 function main() {
   const branch = process.env.GIT_BRANCH ?? "main";
   const timezone = process.env.COMMIT_LIMIT_TZ ?? DEFAULT_COMMIT_LIMIT_TIMEZONE;
+  assertValidTimezone(timezone);
   const limit = Number.parseInt(
     process.env.MAIN_DAILY_COMMIT_LIMIT ??
       String(DEFAULT_MAIN_DAILY_COMMIT_LIMIT),
