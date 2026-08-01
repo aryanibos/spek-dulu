@@ -5,7 +5,7 @@ import {
   visualDesignRequestSchema,
   type VisualSpec,
 } from "@/lib/schema";
-import { assertSafePublicUrl } from "@/lib/security/url";
+import { assertSafePublicUrl, fetchSafePublicText } from "@/lib/security/url";
 import { originalityWarnings } from "@/lib/visual/originality";
 import {
   listDesignSuggestions,
@@ -15,25 +15,6 @@ import {
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-async function fetchPublicHtml(url: URL) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
-  try {
-    const response = await fetch(url.toString(), {
-      redirect: "follow",
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "SpekDuluBot/1.0 (+https://spekdulu.local)",
-      },
-    });
-    if (!response.ok) throw new Error(`Upstream responded with ${response.status}.`);
-    const text = await response.text();
-    return text.slice(0, 120_000);
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 function extractCssHints(html: string) {
   return [...new Set(Array.from(html.matchAll(/#(?:[0-9a-fA-F]{3}){1,2}\b/g)).map((m) => m[0]))].slice(
@@ -120,7 +101,7 @@ export async function POST(request: Request) {
     if (body.action === "from-url") {
       if (!body.url) throw new Error("Reference URL is required.");
       const safeUrl = await assertSafePublicUrl(body.url);
-      const html = await fetchPublicHtml(safeUrl);
+      const html = await fetchSafePublicText(safeUrl);
       const hints = extractCssHints(html);
       const provider = getAiProvider();
 
