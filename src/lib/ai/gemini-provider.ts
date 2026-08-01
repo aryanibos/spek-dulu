@@ -81,9 +81,9 @@ Return JSON: {"questions":[{"id":"...","prompt":"...","helper":"...","allowCusto
 Keep questions decisive and anti-scope-creep.`,
         questionsSchema,
       );
-      return result.questions;
+      return { questions: result.questions, provider: "gemini" };
     } catch {
-      return buildDemoQuestions(idea);
+      return { questions: buildDemoQuestions(idea), provider: "demo" };
     }
   },
 
