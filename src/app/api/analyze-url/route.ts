@@ -1,31 +1,12 @@
 import { NextResponse } from "next/server";
 import { getAiProvider } from "@/lib/ai";
 import { analyzeUrlRequestSchema } from "@/lib/schema";
-import { assertSafePublicUrl } from "@/lib/security/url";
+import { assertSafePublicUrl, fetchSafePublicText } from "@/lib/security/url";
 import { buildDemoVisual } from "@/lib/demos/preset";
 import { originalityWarnings } from "@/lib/visual/originality";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-async function fetchPublicHtml(url: URL) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
-  try {
-    const response = await fetch(url.toString(), {
-      redirect: "follow",
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "SpekDuluBot/1.0 (+https://spekdulu.local)",
-      },
-    });
-    if (!response.ok) throw new Error(`Upstream responded with ${response.status}.`);
-    const text = await response.text();
-    return text.slice(0, 120_000);
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 function extractCssHints(html: string) {
   const colors = Array.from(html.matchAll(/#(?:[0-9a-fA-F]{3}){1,2}\b/g)).map((m) => m[0]);
@@ -45,7 +26,7 @@ export async function POST(request: Request) {
       // Full browser automation can be wired to this endpoint without changing the client contract.
     }
 
-    const html = await fetchPublicHtml(safeUrl);
+    const html = await fetchSafePublicText(safeUrl);
     const hints = extractCssHints(html);
     const provider = getAiProvider();
 

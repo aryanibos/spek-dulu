@@ -57,7 +57,12 @@ export const scopeAssessmentSchema = z.object({
 
 export const colorTokenSchema = z.object({
   name: z.string(),
-  hex: z.string(),
+  hex: z
+    .string()
+    .regex(
+      /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/,
+      "Color hex must be #RGB, #RRGGBB, or #RRGGBBAA",
+    ),
   role: z.enum(["surface", "accent", "text", "border", "alert"]),
   source: z.enum(["observed", "inferred", "generated"]),
   confidence: z.number().min(0).max(100),
