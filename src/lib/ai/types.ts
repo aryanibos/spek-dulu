@@ -5,9 +5,17 @@ import type {
   VisualSpec,
 } from "@/lib/schema";
 
+export interface InterviewResult {
+  questions: InterviewQuestion[];
+  provider: "demo" | "gemini";
+}
+
 export interface AiProvider {
   name: "demo" | "gemini";
-  generateInterview(idea: string, previousAnswers?: Record<string, string>): Promise<InterviewQuestion[]>;
+  generateInterview(
+    idea: string,
+    previousAnswers?: Record<string, string>,
+  ): Promise<InterviewResult>;
   generateBlueprint(
     idea: string,
     answers: Record<string, string>,

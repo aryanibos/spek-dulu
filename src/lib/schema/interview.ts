@@ -30,8 +30,11 @@ export const blueprintRequestSchema = z.object({
   answers: z.record(z.string(), z.string()),
   originalityMode: originalityModeSchema.default("Inspired"),
   referenceUrl: z.string().url().optional().or(z.literal("")),
-  screenshotBase64: z.string().optional(),
-  screenshotMimeType: z.string().optional(),
+  screenshotBase64: z.string().max(4_000_000).optional(),
+  screenshotMimeType: z
+    .string()
+    .regex(/^image\//)
+    .optional(),
 });
 
 export const refineRequestSchema = z.object({
@@ -39,16 +42,16 @@ export const refineRequestSchema = z.object({
   fileName: z.string(),
   currentContent: z.string(),
   userQuery: z.string().min(3).max(2000),
-  blueprintJson: z.string(),
+  blueprintJson: z.string().max(500_000),
 });
 
 export const generateDocRequestSchema = z.object({
   documentKey: z.string(),
-  blueprintJson: z.string(),
+  blueprintJson: z.string().max(500_000),
 });
 
 export const validateRequestSchema = z.object({
-  blueprintJson: z.string(),
+  blueprintJson: z.string().max(500_000),
 });
 
 export const analyzeVisualRequestSchema = z.object({
@@ -66,7 +69,7 @@ export const analyzeUrlRequestSchema = z.object({
 
 export const visualDesignRequestSchema = z.object({
   action: z.enum(["suggest", "apply-suggestion", "revise", "from-url"]),
-  blueprintJson: z.string().min(2),
+  blueprintJson: z.string().min(2).max(500_000),
   originalityMode: originalityModeSchema.optional(),
   presetId: z.string().optional(),
   instruction: z.string().min(3).max(2000).optional(),
