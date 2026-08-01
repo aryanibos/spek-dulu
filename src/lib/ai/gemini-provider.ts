@@ -141,6 +141,15 @@ Return JSON with decisions, features, screens, entities, acceptanceCriteria matc
       return enrichBlueprint(draft);
     } catch {
       const fallback = buildDemoBlueprint(idea, answers);
+      if (options?.originalityMode) {
+        fallback.visual = buildDemoVisual(options.originalityMode);
+      }
+      if (options?.referenceUrl) {
+        fallback.referenceUrl = options.referenceUrl;
+      }
+      if (options?.screenshotBase64) {
+        fallback.hasScreenshot = true;
+      }
       fallback.provider = "demo";
       return enrichBlueprint(fallback);
     }

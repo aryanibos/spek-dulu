@@ -8,9 +8,6 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   try {
     const body = analyzeVisualRequestSchema.parse(await request.json());
-    if (!body.screenshotMimeType.startsWith("image/")) {
-      return NextResponse.json({ error: "Invalid image MIME type." }, { status: 400 });
-    }
     const provider = getAiProvider();
     const visual = await provider.analyzeVisual(body);
     return NextResponse.json(visual);

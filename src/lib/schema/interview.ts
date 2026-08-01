@@ -1,5 +1,10 @@
 import { z } from "zod";
 import { originalityModeSchema } from "./blueprint";
+import {
+  ALLOWED_SCREENSHOT_MIME,
+  boundedRecordSchema,
+  requirePairedScreenshotFields,
+} from "./limits";
 
 export const interviewQuestionSchema = z.object({
   id: z.string(),
@@ -17,7 +22,7 @@ export const interviewQuestionSchema = z.object({
 
 export const interviewRequestSchema = z.object({
   idea: z.string().min(8).max(2000),
-  previousAnswers: z.record(z.string(), z.string()).optional(),
+  previousAnswers: boundedRecordSchema.optional(),
 });
 
 export const interviewResponseSchema = z.object({
@@ -25,22 +30,24 @@ export const interviewResponseSchema = z.object({
   provider: z.enum(["demo", "gemini"]),
 });
 
-export const blueprintRequestSchema = z.object({
-  idea: z.string().min(8).max(2000),
-  answers: z.record(z.string(), z.string()),
-  originalityMode: originalityModeSchema.default("Inspired"),
-  referenceUrl: z.string().url().optional().or(z.literal("")),
-  screenshotBase64: z.string().max(4_000_000).optional(),
-  screenshotMimeType: z
-    .string()
-    .regex(/^image\//, "Screenshot mime type must be an image/* type.")
-    .optional(),
-});
+export const blueprintRequestSchema = z
+  .object({
+    idea: z.string().min(8).max(2000),
+    answers: boundedRecordSchema,
+    originalityMode: originalityModeSchema.default("Inspired"),
+    referenceUrl: z.string().url().optional().or(z.literal("")),
+    screenshotBase64: z.string().max(4_000_000).optional(),
+    screenshotMimeType: z
+      .string()
+      .regex(ALLOWED_SCREENSHOT_MIME, "Screenshot mime type must be image/png, image/jpeg, or image/webp.")
+      .optional(),
+  })
+  .superRefine(requirePairedScreenshotFields);
 
 export const refineRequestSchema = z.object({
   projectId: z.string(),
   fileName: z.string(),
-  currentContent: z.string(),
+  currentContent: z.string().max(120_000),
   userQuery: z.string().min(3).max(2000),
   blueprintJson: z.string().max(500_000),
 });
@@ -57,14 +64,16 @@ export const validateRequestSchema = z.object({
 export const analyzeVisualRequestSchema = z.object({
   originalityMode: originalityModeSchema.default("Inspired"),
   screenshotBase64: z.string().min(20).max(4_000_000),
-  screenshotMimeType: z.string().regex(/^image\//, "Screenshot mime type must be an image/* type."),
-  productContext: z.string().optional(),
+  screenshotMimeType: z
+    .string()
+    .regex(ALLOWED_SCREENSHOT_MIME, "Screenshot mime type must be image/png, image/jpeg, or image/webp."),
+  productContext: z.string().max(2000).optional(),
 });
 
 export const analyzeUrlRequestSchema = z.object({
   url: z.string().url(),
   originalityMode: originalityModeSchema.default("Inspired"),
-  productContext: z.string().optional(),
+  productContext: z.string().max(2000).optional(),
 });
 
 export const visualDesignRequestSchema = z.object({

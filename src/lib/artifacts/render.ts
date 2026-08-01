@@ -5,11 +5,23 @@ import { renderCursorSkill } from "./skill";
 
 type Artifact = ProjectBlueprint["artifacts"][number];
 
+const SAFE_HEX = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
+const SAFE_RADIUS = /^\d+px$/;
+
+function safeHex(value: string, fallback: string): string {
+  return SAFE_HEX.test(value) ? value : fallback;
+}
+
+function safeRadius(value: string, fallback: string): string {
+  return SAFE_RADIUS.test(value) ? value : fallback;
+}
+
 export function renderTokensCss(bp: ProjectBlueprint): string {
   const colors = bp.visual?.colors ?? [];
   const get = (name: string, fallback: string) =>
-    colors.find((c) => c.name.toLowerCase() === name.toLowerCase())?.hex ?? fallback;
+    safeHex(colors.find((c) => c.name.toLowerCase() === name.toLowerCase())?.hex ?? fallback, fallback);
 
+  const radii = bp.visual?.radii;
   return `:root {
   --bg: ${get("Background", "#FFFFFF")};
   --surface: ${get("Background", "#FFFFFF")};
@@ -20,9 +32,9 @@ export function renderTokensCss(bp: ProjectBlueprint): string {
   --border: ${get("Border", "#E5E7EB")};
   --accent: ${get("Primary", "#2196F3")};
   --accent-soft: #90CAF9;
-  --radius-button: ${bp.visual?.radii.button ?? "12px"};
-  --radius-card: ${bp.visual?.radii.card ?? "18px"};
-  --radius-modal: ${bp.visual?.radii.modal ?? "20px"};
+  --radius-button: ${safeRadius(radii?.button ?? "12px", "12px")};
+  --radius-card: ${safeRadius(radii?.card ?? "18px", "18px")};
+  --radius-modal: ${safeRadius(radii?.modal ?? "20px", "20px")};
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
