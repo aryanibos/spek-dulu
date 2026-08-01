@@ -11,7 +11,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
-    "check:main-commit-limit": "node --experimental-strip-types scripts/check-daily-main-commit-limit.ts",
+    "check:main-commit-limit": "tsx scripts/check-daily-main-commit-limit.ts",
     "setup:hooks": "git config core.hooksPath .githooks"
   },
   "dependencies": {
@@ -45,6 +45,7 @@
     "jsdom": "^29.1.1",
     "playwright": "^1.62.1",
     "tailwindcss": "^4",
+    "tsx": "^4.20.3",
     "typescript": "^5",
     "vitest": "^4.1.10"
   }

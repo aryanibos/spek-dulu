@@ -30,5 +30,5 @@ while read -r _ local_ref local_sha remote_ref remote_sha; do
   fi
 
   export PENDING_MAIN_COMMITS="$pending"
-  node --experimental-strip-types scripts/check-daily-main-commit-limit.ts
+  npm run --silent check:main-commit-limit
 done

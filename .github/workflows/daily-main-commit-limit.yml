@@ -35,7 +35,7 @@ jobs:
           COMMIT_LIMIT_TZ: Asia/Jakarta
           MAIN_DAILY_COMMIT_LIMIT: "5"
           PENDING_MAIN_COMMITS: ${{ github.event_name == 'pull_request' && '1' || '0' }}
-        run: node --experimental-strip-types scripts/check-daily-main-commit-limit.ts
+        run: npm run check:main-commit-limit
 
   auto-merge-cursor-pr:
     needs: enforce-daily-main-commit-limit
@@ -65,7 +65,7 @@ jobs:
           COMMIT_LIMIT_TZ: Asia/Jakarta
           MAIN_DAILY_COMMIT_LIMIT: "5"
           PENDING_MAIN_COMMITS: "1"
-        run: node --experimental-strip-types scripts/check-daily-main-commit-limit.ts
+        run: npm run check:main-commit-limit
 
       - name: Squash merge cursor PR to main
         env:
