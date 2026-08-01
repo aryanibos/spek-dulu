@@ -8,6 +8,11 @@ if [[ -z "$remote" || -z "$url" ]]; then
   exit 0
 fi
 
+if ! git fetch "$remote" main >/dev/null 2>&1; then
+  echo "Could not fetch latest main from ${remote}; refusing push without up-to-date limit check" >&2
+  exit 1
+fi
+
 while read -r _ local_ref local_sha remote_ref remote_sha; do
   if [[ "$remote_ref" != "refs/heads/main" ]]; then
     continue
@@ -29,6 +34,7 @@ while read -r _ local_ref local_sha remote_ref remote_sha; do
     }
   fi
 
+  export GIT_BRANCH="${remote}/main"
   export PENDING_MAIN_COMMITS="$pending"
   npm run --silent check:main-commit-limit
 done

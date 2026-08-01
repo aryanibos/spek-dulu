@@ -59,6 +59,14 @@ jobs:
       - name: Fetch latest main
         run: git fetch origin main:main
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Re-verify daily commit limit before merge
         env:
           GIT_BRANCH: main
