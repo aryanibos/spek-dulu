@@ -25,6 +25,7 @@ export async function POST(request: Request) {
           url: body.referenceUrl,
           originalityMode: body.originalityMode,
           productContext: body.idea,
+          blueprint,
         });
         blueprint = enrichBlueprint(
           {

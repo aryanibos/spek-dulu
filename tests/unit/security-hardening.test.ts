@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { renderTokensCss } from "@/lib/artifacts/render";
-import { buildDemoBlueprint } from "@/lib/demos/preset";
+import { buildDemoBlueprint, buildDemoVisual } from "@/lib/demos/preset";
 import {
   analyzeVisualRequestSchema,
   blueprintRequestSchema,
+  interviewRequestSchema,
   refineRequestSchema,
 } from "@/lib/schema";
+import { blendHintsIntoVisual } from "@/lib/visual/analyze-url";
 
 describe("schema payload limits", () => {
   it("rejects oversized refine currentContent", () => {
@@ -15,6 +17,25 @@ describe("schema payload limits", () => {
       currentContent: "x".repeat(120_001),
       userQuery: "Tighten scope",
       blueprintJson: "{}",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects answer maps with more than 20 keys", () => {
+    const answers = Object.fromEntries(
+      Array.from({ length: 21 }, (_, i) => [`key_${i}`, "value"]),
+    );
+    const result = blueprintRequestSchema.safeParse({
+      idea: "A simple todo app for students",
+      answers,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects oversized interview previousAnswers keys", () => {
+    const result = interviewRequestSchema.safeParse({
+      idea: "A simple todo app for students who need reminders",
+      previousAnswers: { ["k".repeat(101)]: "value" },
     });
     expect(result.success).toBe(false);
   });
@@ -34,6 +55,16 @@ describe("schema payload limits", () => {
       screenshotMimeType: "image/svg+xml",
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("URL hint blending", () => {
+  it("applies extracted CSS hex hints into demo visual tokens", () => {
+    const base = buildDemoVisual("Inspired");
+    const blended = blendHintsIntoVisual(base, ["#112233"], "example.com");
+
+    expect(blended.colors.find((c) => c.name === "Primary")?.hex).toBe("#112233");
+    expect(blended.summary).toContain("example.com");
   });
 });
 
