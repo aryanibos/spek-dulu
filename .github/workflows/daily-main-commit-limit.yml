@@ -1,0 +1,32 @@
+name: Daily main commit limit
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  enforce-daily-main-commit-limit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verify daily commit limit on main
+        env:
+          GIT_BRANCH: main
+          COMMIT_LIMIT_TZ: Asia/Jakarta
+          MAIN_DAILY_COMMIT_LIMIT: "5"
+          PENDING_MAIN_COMMITS: ${{ github.event_name == 'pull_request' && '1' || '0' }}
+        run: node --experimental-strip-types scripts/check-daily-main-commit-limit.ts

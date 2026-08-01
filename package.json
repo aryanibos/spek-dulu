@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:main-commit-limit": "node --experimental-strip-types scripts/check-daily-main-commit-limit.ts"
   },
   "dependencies": {
     "@google/genai": "^2.15.0",
