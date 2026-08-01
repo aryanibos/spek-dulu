@@ -16,7 +16,6 @@ export async function POST(request: Request) {
       originalityMode: body.originalityMode,
       screenshotBase64: body.screenshotBase64,
       screenshotMimeType: body.screenshotMimeType,
-      referenceUrl: body.referenceUrl || undefined,
     });
 
     if (body.referenceUrl && !body.screenshotBase64) {
@@ -31,12 +30,25 @@ export async function POST(request: Request) {
           {
             ...blueprint,
             visual: urlData.visual,
-            referenceUrl: body.referenceUrl,
+            referenceUrl: urlData.url,
           },
           { regenerateDocuments: true },
         );
       } catch {
-        // Keep blueprint even if URL enrichment fails.
+        const visual = blueprint.visual;
+        blueprint = {
+          ...blueprint,
+          referenceUrl: undefined,
+          visual: visual
+            ? {
+                ...visual,
+                warnings: [
+                  ...visual.warnings,
+                  "Reference URL could not be fetched safely. Kept the suggested palette instead.",
+                ],
+              }
+            : visual,
+        };
       }
     }
 
