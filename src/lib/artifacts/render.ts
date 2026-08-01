@@ -1,6 +1,6 @@
-import type { ProjectBlueprint } from "@/lib/schema";
+import type { DocumentKey, ProjectBlueprint } from "@/lib/schema";
 import { validateBlueprint } from "@/lib/coherence/validate";
-import { renderAllDocuments } from "./documents";
+import { DOC_META, renderAllDocuments, renderDocument } from "./documents";
 import { renderCursorSkill } from "./skill";
 
 type Artifact = ProjectBlueprint["artifacts"][number];
@@ -139,12 +139,22 @@ export function buildArtifacts(bp: ProjectBlueprint): Artifact[] {
 
 export function enrichBlueprint(
   bp: ProjectBlueprint,
-  options?: { regenerateDocuments?: boolean },
+  options?: { regenerateDocuments?: boolean; regenerateDocumentKeys?: DocumentKey[] },
 ): ProjectBlueprint {
-  const documents =
-    options?.regenerateDocuments || bp.documents.length === 0
-      ? renderAllDocuments(bp, true)
-      : bp.documents;
+  let documents: ProjectBlueprint["documents"];
+  if (options?.regenerateDocuments || bp.documents.length === 0) {
+    documents = renderAllDocuments(bp, true);
+  } else if (options?.regenerateDocumentKeys?.length) {
+    const keysToRegenerate = new Set(options.regenerateDocumentKeys);
+    const existing = new Map(bp.documents.map((doc) => [doc.key, doc]));
+    documents = (Object.keys(DOC_META) as DocumentKey[]).map((key) =>
+      keysToRegenerate.has(key)
+        ? renderDocument(key, bp, true)
+        : (existing.get(key) ?? renderDocument(key, bp, true)),
+    );
+  } else {
+    documents = bp.documents;
+  }
   const withDocs = { ...bp, documents, updatedAt: new Date().toISOString() };
   return {
     ...withDocs,

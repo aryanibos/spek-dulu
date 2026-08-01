@@ -10,6 +10,11 @@ describe("url safety", () => {
     await expect(assertSafePublicUrl("http://127.0.0.1")).rejects.toThrow();
   });
 
+  it("blocks full loopback range", async () => {
+    await expect(assertSafePublicUrl("http://127.0.0.2")).rejects.toThrow();
+    await expect(assertSafePublicUrl("http://127.255.255.254")).rejects.toThrow();
+  });
+
   it("blocks 0.0.0.0", async () => {
     await expect(assertSafePublicUrl("http://0.0.0.0")).rejects.toThrow();
   });

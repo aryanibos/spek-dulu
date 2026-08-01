@@ -134,4 +134,49 @@ describe("artifact generation", () => {
     expect(prd?.content).not.toBe("CUSTOM ONLY CONTENT");
     expect(prd?.content).toContain("User stories");
   });
+
+  it("refreshes visual documents while preserving other edits", () => {
+    const base = enrichBlueprint(
+      buildDemoBlueprint("Aplikasi pencatat utang warung", {
+        user: "Solo shop owner",
+        job: "Record debt and mark it paid",
+        auth: "demo_profile",
+        data: "local_demo",
+        constraint: "Three screens max in Phase 1",
+      }),
+    );
+    const originalPrimary = base.visual?.colors.find((c) => c.name === "Primary")?.hex;
+    const withPrdEdit = {
+      ...base,
+      documents: base.documents.map((doc) =>
+        doc.key === "01_PRD"
+          ? { ...doc, content: `${doc.content}\n\n## User refinement\nKeep webhook assumptions.\n` }
+          : doc,
+      ),
+    };
+    const newPrimary = "#FF5722";
+    const withNewVisual = {
+      ...withPrdEdit,
+      visual: {
+        ...withPrdEdit.visual!,
+        summary: "Updated visual direction for testing.",
+        colors: withPrdEdit.visual!.colors.map((color) =>
+          color.name === "Primary" ? { ...color, hex: newPrimary } : color,
+        ),
+      },
+    };
+
+    const enriched = enrichBlueprint(withNewVisual, {
+      regenerateDocumentKeys: ["02_DESIGN_SYSTEM", "10_DESIGN_ADAPTATION_GUIDE"],
+    });
+
+    const prd = enriched.documents.find((d) => d.key === "01_PRD");
+    const design = enriched.documents.find((d) => d.key === "02_DESIGN_SYSTEM");
+    const tokens = enriched.artifacts.find((a) => a.path === "tokens.css");
+
+    expect(prd?.content).toContain("User refinement");
+    expect(design?.content).toContain(newPrimary);
+    expect(design?.content).not.toContain(originalPrimary ?? "");
+    expect(tokens?.content).toContain(newPrimary);
+  });
 });
