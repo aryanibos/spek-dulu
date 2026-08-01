@@ -132,6 +132,7 @@ export function Wizard() {
       router.push(`/workspace/${blueprint.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save project.");
+    } finally {
       setLoading(false);
     }
   }

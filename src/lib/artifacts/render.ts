@@ -1,4 +1,5 @@
 import type { ProjectBlueprint } from "@/lib/schema";
+import { validateBlueprint } from "@/lib/coherence/validate";
 import { renderAllDocuments } from "./documents";
 import { renderCursorSkill } from "./skill";
 
@@ -139,8 +140,12 @@ export function buildArtifacts(bp: ProjectBlueprint): Artifact[] {
 export function enrichBlueprint(bp: ProjectBlueprint): ProjectBlueprint {
   const documents = renderAllDocuments(bp, true);
   const withDocs = { ...bp, documents, updatedAt: new Date().toISOString() };
-  return {
+  const enriched = {
     ...withDocs,
     artifacts: buildArtifacts(withDocs),
+  };
+  return {
+    ...enriched,
+    coherence: validateBlueprint(enriched),
   };
 }
