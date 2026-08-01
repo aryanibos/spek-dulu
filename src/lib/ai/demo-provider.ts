@@ -9,7 +9,7 @@ import type { AiProvider } from "./types";
 export const demoProvider: AiProvider = {
   name: "demo",
   async generateInterview(idea) {
-    return buildDemoQuestions(idea);
+    return { questions: buildDemoQuestions(idea), provider: "demo" as const };
   },
   async generateBlueprint(idea, answers, options) {
     const blueprint = buildDemoBlueprint(idea, answers);

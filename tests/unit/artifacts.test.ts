@@ -85,4 +85,53 @@ describe("artifact generation", () => {
       expect(doc.isDetailed).toBe(true);
     }
   });
+
+  it("preserves existing documents when enriching without regenerate flag", () => {
+    const base = enrichBlueprint(
+      buildDemoBlueprint("Aplikasi pencatat utang warung", {
+        user: "Solo shop owner",
+        job: "Record debt and mark it paid",
+        auth: "demo_profile",
+        data: "local_demo",
+        constraint: "Three screens max in Phase 1",
+      }),
+    );
+    const editedPrd = base.documents.find((d) => d.key === "01_PRD");
+    expect(editedPrd).toBeDefined();
+    const customContent = `${editedPrd!.content}\n\n## User refinement\nKeep webhook assumptions.\n`;
+    const withEdit = {
+      ...base,
+      documents: base.documents.map((doc) =>
+        doc.key === "01_PRD" ? { ...doc, content: customContent } : doc,
+      ),
+    };
+
+    const enriched = enrichBlueprint(withEdit);
+    const prd = enriched.documents.find((d) => d.key === "01_PRD");
+    expect(prd?.content).toContain("User refinement");
+    expect(prd?.content).toContain("Keep webhook assumptions.");
+  });
+
+  it("regenerates documents when regenerateDocuments is true", () => {
+    const base = enrichBlueprint(
+      buildDemoBlueprint("Aplikasi pencatat utang warung", {
+        user: "Solo shop owner",
+        job: "Record debt and mark it paid",
+        auth: "demo_profile",
+        data: "local_demo",
+        constraint: "Three screens max in Phase 1",
+      }),
+    );
+    const withEdit = {
+      ...base,
+      documents: base.documents.map((doc) =>
+        doc.key === "01_PRD" ? { ...doc, content: "CUSTOM ONLY CONTENT" } : doc,
+      ),
+    };
+
+    const enriched = enrichBlueprint(withEdit, { regenerateDocuments: true });
+    const prd = enriched.documents.find((d) => d.key === "01_PRD");
+    expect(prd?.content).not.toBe("CUSTOM ONLY CONTENT");
+    expect(prd?.content).toContain("User stories");
+  });
 });

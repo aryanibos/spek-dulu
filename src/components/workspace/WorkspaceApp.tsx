@@ -674,7 +674,8 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
                 ))}
               </ul>
               <p className="mt-4 text-xs text-[var(--text-muted)]">
-                Setiap apply visual otomatis regenerate docs + tokens.css untuk export Cursor.
+                Visual updates refresh tokens.css and export artifacts. Document text is preserved
+                unless you regenerate from the wizard.
               </p>
             </Card>
           </div>
