@@ -76,6 +76,7 @@ export function evaluateDailyMainCommitLimit(options: {
   const totalAfterPending = options.commitsToday + pendingCommits;
   const allowed = totalAfterPending <= limit;
   const remaining = Math.max(0, limit - options.commitsToday);
+  const remainingAfterPending = Math.max(0, limit - totalAfterPending);
   const resetAt = getNextMorningReset(timezone, now);
   const resetLabel = resetAt.toLocaleString("id-ID", {
     timeZone: timezone,
@@ -83,9 +84,12 @@ export function evaluateDailyMainCommitLimit(options: {
     timeStyle: "short",
   });
 
+  const slotsLabel =
+    pendingCommits > 0 ? remainingAfterPending : remaining;
+
   const message = allowed
-    ? `${options.commitsToday}/${limit} commit ke main hari ini. Sisa ${remaining}.`
-    : `Batas ${limit} commit/hari ke branch main sudah tercapai (${options.commitsToday}/${limit}). Lanjutkan besok pagi (reset ${resetLabel}).`;
+    ? `${options.commitsToday}/${limit} commit ke main hari ini. Sisa ${slotsLabel}.`
+    : `Batas ${limit} commit/hari ke branch main sudah tercapai (${totalAfterPending}/${limit}). Lanjutkan besok pagi (reset ${resetLabel}).`;
 
   return {
     allowed,
