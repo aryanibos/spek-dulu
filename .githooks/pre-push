@@ -17,17 +17,27 @@ while read -r _ local_ref local_sha remote_ref remote_sha; do
     continue
   fi
 
-  git fetch "$remote" main --quiet 2>/dev/null || true
+  if ! git fetch "$remote" main --quiet; then
+    echo "Gagal fetch $remote/main — push ke main dibatalkan (batas commit harian)." >&2
+    exit 1
+  fi
+
+  fetched_sha="$(git rev-parse "$remote/main")"
+
+  if [[ "$remote_sha" != "0000000000000000000000000000000000000000" && "$remote_sha" != "$fetched_sha" ]]; then
+    echo "Remote main sudah berubah. Jalankan git fetch && git rebase origin/main lalu push lagi." >&2
+    exit 1
+  fi
 
   export COMMIT_LIMIT_TZ="Asia/Jakarta"
   export GIT_PUSH_TIP="$local_sha"
 
-  if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
+  if [[ "$fetched_sha" == "0000000000000000000000000000000000000000" ]]; then
     export GIT_BRANCH=""
     export GIT_PUSH_BASE=""
   else
-    export GIT_BRANCH="$remote_sha"
-    export GIT_PUSH_BASE="$remote_sha"
+    export GIT_BRANCH="$fetched_sha"
+    export GIT_PUSH_BASE="$fetched_sha"
   fi
 
   unset PENDING_MAIN_COMMITS

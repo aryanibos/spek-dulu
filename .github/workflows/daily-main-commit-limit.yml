@@ -3,6 +3,7 @@ name: Daily main commit limit
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
@@ -42,6 +43,7 @@ jobs:
     if: >
       github.event_name == 'pull_request' &&
       contains(fromJSON('["opened", "synchronize", "reopened", "ready_for_review"]'), github.event.action) &&
+      !github.event.pull_request.draft &&
       !github.event.pull_request.merged &&
       startsWith(github.head_ref, 'cursor/') &&
       github.event.pull_request.user.login != 'dependabot[bot]'

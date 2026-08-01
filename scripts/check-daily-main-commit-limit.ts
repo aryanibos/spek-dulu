@@ -9,6 +9,13 @@ import {
 } from "../src/lib/git/daily-main-commit-limit.ts";
 
 const ZERO_SHA = "0000000000000000000000000000000000000000";
+const VALID_GIT_REF = /^[0-9a-f]{40}$|^main$|^HEAD$/;
+
+function assertValidGitRef(ref: string, label: string) {
+  if (!VALID_GIT_REF.test(ref)) {
+    throw new Error(`${label} is not a valid git ref: "${ref}"`);
+  }
+}
 
 function assertValidTimezone(timezone: string) {
   try {
@@ -19,6 +26,7 @@ function assertValidTimezone(timezone: string) {
 }
 
 function readCommitTimestamps(ref: string): CommitTimestamp[] {
+  assertValidGitRef(ref, "GIT_BRANCH");
   const output = execSync(`git log ${ref} --first-parent --format=%cI`, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
@@ -32,6 +40,8 @@ function readCommitTimestamps(ref: string): CommitTimestamp[] {
 }
 
 function readCommitTimestampsInRange(base: string, tip: string): CommitTimestamp[] {
+  assertValidGitRef(base, "GIT_PUSH_BASE");
+  assertValidGitRef(tip, "GIT_PUSH_TIP");
   const output = execSync(`git log ${base}..${tip} --first-parent --format=%cI`, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
@@ -49,6 +59,7 @@ function readPendingMainCommits(timezone: string) {
   const pushBase = process.env.GIT_PUSH_BASE;
 
   if (pushTip) {
+    assertValidGitRef(pushTip, "GIT_PUSH_TIP");
     const commits =
       !pushBase || pushBase === ZERO_SHA
         ? readCommitTimestamps(pushTip)
@@ -68,6 +79,9 @@ function readPendingMainCommits(timezone: string) {
 
 function main() {
   const branch = process.env.GIT_BRANCH ?? "main";
+  if (branch && branch !== ZERO_SHA && branch !== "main") {
+    assertValidGitRef(branch, "GIT_BRANCH");
+  }
   const timezone = process.env.COMMIT_LIMIT_TZ ?? DEFAULT_COMMIT_LIMIT_TIMEZONE;
   assertValidTimezone(timezone);
   const limit = Number.parseInt(
