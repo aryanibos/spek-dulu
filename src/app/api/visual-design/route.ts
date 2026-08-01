@@ -5,7 +5,7 @@ import {
   visualDesignRequestSchema,
   type VisualSpec,
 } from "@/lib/schema";
-import { assertSafePublicUrl } from "@/lib/security/url";
+import { assertSafePublicUrl, fetchSafePublicHtml } from "@/lib/security/url";
 import { originalityWarnings } from "@/lib/visual/originality";
 import {
   listDesignSuggestions,
@@ -17,22 +17,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 async function fetchPublicHtml(url: URL) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
-  try {
-    const response = await fetch(url.toString(), {
-      redirect: "follow",
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "SpekDuluBot/1.0 (+https://spekdulu.local)",
-      },
-    });
-    if (!response.ok) throw new Error(`Upstream responded with ${response.status}.`);
-    const text = await response.text();
-    return text.slice(0, 120_000);
-  } finally {
-    clearTimeout(timer);
-  }
+  return fetchSafePublicHtml(url.toString());
 }
 
 function extractCssHints(html: string) {

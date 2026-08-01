@@ -56,6 +56,59 @@ describe("artifact generation", () => {
     expect(exported?.content).toContain("Non-goals");
   });
 
+  it("preserves existing documents when enriching without regenerate flag", () => {
+    const blueprint = enrichBlueprint(
+      buildDemoBlueprint("Aplikasi pencatat utang warung", {
+        user: "Solo shop owner",
+        job: "Record debt and mark it paid",
+        auth: "demo_profile",
+        data: "local_demo",
+        constraint: "Three screens max in Phase 1",
+      }),
+    );
+
+    const customContent = "## User Refined Section\nCustom PRD text preserved.";
+    const withEdits = {
+      ...blueprint,
+      documents: blueprint.documents.map((doc) =>
+        doc.key === "01_PRD" ? { ...doc, content: customContent, isDetailed: true } : doc,
+      ),
+    };
+
+    const enriched = enrichBlueprint(withEdits);
+    const prd = enriched.documents.find((d) => d.key === "01_PRD");
+    expect(prd?.content).toBe(customContent);
+    expect(enriched.coherence).toBeDefined();
+    expect(
+      enriched.artifacts.some((a) => a.path === "docs/01_PRD.md" && a.content === customContent),
+    ).toBe(true);
+  });
+
+  it("regenerates documents when regenerateDocuments is true", () => {
+    const blueprint = enrichBlueprint(
+      buildDemoBlueprint("Aplikasi pencatat utang warung", {
+        user: "Solo shop owner",
+        job: "Record debt and mark it paid",
+        auth: "demo_profile",
+        data: "local_demo",
+        constraint: "Three screens max in Phase 1",
+      }),
+    );
+
+    const customContent = "## User Refined Section\nCustom PRD text preserved.";
+    const withEdits = {
+      ...blueprint,
+      documents: blueprint.documents.map((doc) =>
+        doc.key === "01_PRD" ? { ...doc, content: customContent, isDetailed: true } : doc,
+      ),
+    };
+
+    const regenerated = enrichBlueprint(withEdits, { regenerateDocuments: true });
+    const prd = regenerated.documents.find((d) => d.key === "01_PRD");
+    expect(prd?.content).not.toBe(customContent);
+    expect(prd?.content).toContain("User stories");
+  });
+
   it("generates full impressive docs for all 11 package files", () => {
     const blueprint = enrichBlueprint(
       buildDemoBlueprint("Aplikasi pencatat utang warung", {

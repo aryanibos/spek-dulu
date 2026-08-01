@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { originalityModeSchema } from "./blueprint";
 
+const blueprintJsonField = z.string().min(2).max(500_000);
+
 export const interviewQuestionSchema = z.object({
   id: z.string(),
   prompt: z.string(),
@@ -25,36 +27,46 @@ export const interviewResponseSchema = z.object({
   provider: z.enum(["demo", "gemini"]),
 });
 
-export const blueprintRequestSchema = z.object({
-  idea: z.string().min(8).max(2000),
-  answers: z.record(z.string(), z.string()),
-  originalityMode: originalityModeSchema.default("Inspired"),
-  referenceUrl: z.string().url().optional().or(z.literal("")),
-  screenshotBase64: z.string().optional(),
-  screenshotMimeType: z.string().optional(),
-});
+export const blueprintRequestSchema = z
+  .object({
+    idea: z.string().min(8).max(2000),
+    answers: z.record(z.string(), z.string()),
+    originalityMode: originalityModeSchema.default("Inspired"),
+    referenceUrl: z.string().url().optional().or(z.literal("")),
+    screenshotBase64: z.string().max(4_000_000).optional(),
+    screenshotMimeType: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.screenshotBase64 && !data.screenshotMimeType?.startsWith("image/")) {
+      ctx.addIssue({
+        code: "custom",
+        message: "screenshotMimeType must be image/* when screenshotBase64 is provided.",
+        path: ["screenshotMimeType"],
+      });
+    }
+  });
 
 export const refineRequestSchema = z.object({
   projectId: z.string(),
   fileName: z.string(),
-  currentContent: z.string(),
+  currentContent: z.string().max(500_000),
   userQuery: z.string().min(3).max(2000),
-  blueprintJson: z.string(),
+  blueprintJson: blueprintJsonField,
 });
 
 export const generateDocRequestSchema = z.object({
   documentKey: z.string(),
-  blueprintJson: z.string(),
+  blueprintJson: blueprintJsonField,
 });
 
 export const validateRequestSchema = z.object({
-  blueprintJson: z.string(),
+  blueprintJson: blueprintJsonField,
 });
 
 export const analyzeVisualRequestSchema = z.object({
   originalityMode: originalityModeSchema.default("Inspired"),
-  screenshotBase64: z.string().min(20),
-  screenshotMimeType: z.string(),
+  screenshotBase64: z.string().min(20).max(4_000_000),
+  screenshotMimeType: z.string().refine((m) => m.startsWith("image/"), "Must be image/*"),
   productContext: z.string().optional(),
 });
 
@@ -66,7 +78,7 @@ export const analyzeUrlRequestSchema = z.object({
 
 export const visualDesignRequestSchema = z.object({
   action: z.enum(["suggest", "apply-suggestion", "revise", "from-url"]),
-  blueprintJson: z.string().min(2),
+  blueprintJson: blueprintJsonField,
   originalityMode: originalityModeSchema.optional(),
   presetId: z.string().optional(),
   instruction: z.string().min(3).max(2000).optional(),
