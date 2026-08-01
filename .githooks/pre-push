@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+remote="${1:-}"
+url="${2:-}"
+
+if [[ -z "$remote" || -z "$url" ]]; then
+  exit 0
+fi
+
+while read -r _ local_ref local_sha remote_ref remote_sha; do
+  if [[ "$remote_ref" != "refs/heads/main" ]]; then
+    continue
+  fi
+
+  if [[ "$local_sha" == "0000000000000000000000000000000000000000" ]]; then
+    continue
+  fi
+
+  if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
+    pending=1
+  else
+    pending="$(git rev-list --count "${remote_sha}..${local_sha}" 2>/dev/null || echo 1)"
+  fi
+
+  export PENDING_MAIN_COMMITS="$pending"
+  node --experimental-strip-types scripts/check-daily-main-commit-limit.ts
+done
