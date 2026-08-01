@@ -7,7 +7,10 @@ import type {
 
 export interface AiProvider {
   name: "demo" | "gemini";
-  generateInterview(idea: string, previousAnswers?: Record<string, string>): Promise<InterviewQuestion[]>;
+  generateInterview(
+    idea: string,
+    previousAnswers?: Record<string, string>,
+  ): Promise<{ questions: InterviewQuestion[]; provider: "demo" | "gemini" }>;
   generateBlueprint(
     idea: string,
     answers: Record<string, string>,
