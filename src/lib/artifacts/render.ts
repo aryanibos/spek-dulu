@@ -1,4 +1,5 @@
 import type { ProjectBlueprint } from "@/lib/schema";
+import { validateBlueprint } from "@/lib/coherence/validate";
 import { renderAllDocuments } from "./documents";
 import { renderCursorSkill } from "./skill";
 
@@ -136,11 +137,18 @@ export function buildArtifacts(bp: ProjectBlueprint): Artifact[] {
   ];
 }
 
-export function enrichBlueprint(bp: ProjectBlueprint): ProjectBlueprint {
-  const documents = renderAllDocuments(bp, true);
+export function enrichBlueprint(
+  bp: ProjectBlueprint,
+  options?: { regenerateDocuments?: boolean },
+): ProjectBlueprint {
+  const documents =
+    options?.regenerateDocuments || bp.documents.length === 0
+      ? renderAllDocuments(bp, true)
+      : bp.documents;
   const withDocs = { ...bp, documents, updatedAt: new Date().toISOString() };
   return {
     ...withDocs,
+    coherence: validateBlueprint(withDocs),
     artifacts: buildArtifacts(withDocs),
   };
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAiProvider } from "@/lib/ai";
 import { projectBlueprintSchema, refineRequestSchema } from "@/lib/schema";
+import { stripDangerousMarkdown } from "@/lib/security/sanitize";
 import { createId } from "@/lib/utils";
 
 export const runtime = "nodejs";
@@ -19,6 +20,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({
       ...result,
+      updatedContent: stripDangerousMarkdown(result.updatedContent),
       versionId: createId("ver"),
     });
   } catch (error) {
