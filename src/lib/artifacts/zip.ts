@@ -5,7 +5,7 @@ import { buildArtifacts } from "./render";
 
 export async function downloadBlueprintZip(bp: ProjectBlueprint) {
   const zip = new JSZip();
-  const artifacts = bp.artifacts.length ? bp.artifacts : buildArtifacts(bp);
+  const artifacts = buildArtifacts(bp);
   for (const artifact of artifacts) {
     zip.file(artifact.path, artifact.content);
   }
