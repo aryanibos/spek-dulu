@@ -22,7 +22,7 @@ function normalizeIp(ip: string): string {
 
 function isPrivateIp(ip: string): boolean {
   const normalized = normalizeIp(ip);
-  if (normalized === "127.0.0.1" || normalized === "::1" || normalized === "0.0.0.0") {
+  if (normalized.startsWith("127.") || normalized === "::1" || normalized === "0.0.0.0") {
     return true;
   }
   if (normalized.startsWith("10.")) return true;

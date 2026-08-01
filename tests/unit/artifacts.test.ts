@@ -134,4 +134,43 @@ describe("artifact generation", () => {
     expect(prd?.content).not.toBe("CUSTOM ONLY CONTENT");
     expect(prd?.content).toContain("User stories");
   });
+
+  it("regenerates only selected document keys", () => {
+    const base = enrichBlueprint(
+      buildDemoBlueprint("Aplikasi pencatat utang warung", {
+        user: "Solo shop owner",
+        job: "Record debt and mark it paid",
+        auth: "demo_profile",
+        data: "local_demo",
+        constraint: "Three screens max in Phase 1",
+      }),
+    );
+    const withEdits = {
+      ...base,
+      documents: base.documents.map((doc) => {
+        if (doc.key === "01_PRD") {
+          return { ...doc, content: "CUSTOM PRD CONTENT" };
+        }
+        if (doc.key === "02_DESIGN_SYSTEM") {
+          return { ...doc, content: "STALE DESIGN CONTENT" };
+        }
+        return doc;
+      }),
+    };
+
+    const enriched = enrichBlueprint(withEdits, {
+      regenerateDocumentKeys: ["02_DESIGN_SYSTEM", "10_DESIGN_ADAPTATION_GUIDE"],
+    });
+
+    expect(enriched.documents.find((d) => d.key === "01_PRD")?.content).toBe("CUSTOM PRD CONTENT");
+    expect(enriched.documents.find((d) => d.key === "02_DESIGN_SYSTEM")?.content).not.toBe(
+      "STALE DESIGN CONTENT",
+    );
+    expect(enriched.documents.find((d) => d.key === "02_DESIGN_SYSTEM")?.content).toContain(
+      "Visual direction",
+    );
+    expect(enriched.documents.find((d) => d.key === "10_DESIGN_ADAPTATION_GUIDE")?.content).toContain(
+      "Adaptation",
+    );
+  });
 });

@@ -1,4 +1,4 @@
-import type { ProjectBlueprint } from "@/lib/schema";
+import type { DocumentKey, ProjectBlueprint } from "@/lib/schema";
 import { validateBlueprint } from "@/lib/coherence/validate";
 import { renderAllDocuments } from "./documents";
 import { renderCursorSkill } from "./skill";
@@ -139,12 +139,23 @@ export function buildArtifacts(bp: ProjectBlueprint): Artifact[] {
 
 export function enrichBlueprint(
   bp: ProjectBlueprint,
-  options?: { regenerateDocuments?: boolean },
+  options?: { regenerateDocuments?: boolean; regenerateDocumentKeys?: DocumentKey[] },
 ): ProjectBlueprint {
-  const documents =
-    options?.regenerateDocuments || bp.documents.length === 0
-      ? renderAllDocuments(bp, true)
-      : bp.documents;
+  let documents = bp.documents;
+  if (options?.regenerateDocuments || bp.documents.length === 0) {
+    documents = renderAllDocuments(bp, true);
+  } else if (options?.regenerateDocumentKeys?.length) {
+    const keys = new Set(options.regenerateDocumentKeys);
+    const fresh = Object.fromEntries(
+      renderAllDocuments(bp, true).map((doc) => [doc.key, doc]),
+    ) as Partial<Record<DocumentKey, (typeof bp.documents)[number]>>;
+    documents = bp.documents.map((doc) => (keys.has(doc.key) ? (fresh[doc.key] ?? doc) : doc));
+    for (const key of options.regenerateDocumentKeys) {
+      if (!documents.some((doc) => doc.key === key) && fresh[key]) {
+        documents.push(fresh[key]!);
+      }
+    }
+  }
   const withDocs = { ...bp, documents, updatedAt: new Date().toISOString() };
   return {
     ...withDocs,
