@@ -10,6 +10,38 @@ import {
 
 const ZERO_SHA = "0000000000000000000000000000000000000000";
 
+function resolveMainRef(): string {
+  for (const ref of ["main", "origin/main"]) {
+    try {
+      execSync(`git rev-parse --verify ${ref}`, {
+        stdio: ["ignore", "ignore", "ignore"],
+      });
+      return ref;
+    } catch {
+      // try next ref
+    }
+  }
+
+  throw new Error(
+    "Cannot resolve main branch ref (tried main and origin/main). Run: git fetch origin main:main",
+  );
+}
+
+function resolveGitBranchRef(explicit?: string): string {
+  if (explicit && explicit !== ZERO_SHA) {
+    try {
+      execSync(`git rev-parse --verify ${explicit}`, {
+        stdio: ["ignore", "ignore", "ignore"],
+      });
+      return explicit;
+    } catch {
+      // fall through to main ref resolution
+    }
+  }
+
+  return resolveMainRef();
+}
+
 function assertValidTimezone(timezone: string) {
   try {
     new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
@@ -67,7 +99,7 @@ function readPendingMainCommits(timezone: string) {
 }
 
 function main() {
-  const branch = process.env.GIT_BRANCH ?? "main";
+  const branch = resolveGitBranchRef(process.env.GIT_BRANCH);
   const timezone = process.env.COMMIT_LIMIT_TZ ?? DEFAULT_COMMIT_LIMIT_TIMEZONE;
   assertValidTimezone(timezone);
   const limit = Number.parseInt(
