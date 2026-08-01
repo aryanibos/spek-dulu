@@ -32,11 +32,15 @@ export async function POST(request: Request) {
         });
         if (urlRes.ok) {
           const urlData = await urlRes.json();
-          blueprint = enrichBlueprint({
-            ...blueprint,
-            visual: urlData.visual,
-            referenceUrl: body.referenceUrl,
-          });
+          // Initial generation only — regenerate docs so design tokens match URL visual.
+          blueprint = enrichBlueprint(
+            {
+              ...blueprint,
+              visual: urlData.visual,
+              referenceUrl: body.referenceUrl,
+            },
+            { regenerateDocuments: true },
+          );
         }
       } catch {
         // Keep blueprint even if URL enrichment fails.
