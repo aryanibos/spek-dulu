@@ -138,12 +138,15 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
 
       if (Array.isArray(data.suggestions)) setSuggestions(data.suggestions);
 
-      const next = enrichBlueprint({
-        ...project,
-        visual: data.visual,
-        referenceUrl: data.url || (action === "from-url" ? extra?.url : project.referenceUrl),
-        updatedAt: new Date().toISOString(),
-      });
+      const next = enrichBlueprint(
+        {
+          ...project,
+          visual: data.visual,
+          referenceUrl: data.url || (action === "from-url" ? extra?.url : project.referenceUrl),
+          updatedAt: new Date().toISOString(),
+        },
+        { regenerateDocumentKeys: ["02_DESIGN_SYSTEM", "10_DESIGN_ADAPTATION_GUIDE"] },
+      );
       await persist(next);
       if (action === "revise") setVisualInstruction("");
     } catch (err) {

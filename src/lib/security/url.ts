@@ -22,7 +22,11 @@ function normalizeIp(ip: string): string {
 
 function isPrivateIp(ip: string): boolean {
   const normalized = normalizeIp(ip);
-  if (normalized === "127.0.0.1" || normalized === "::1" || normalized === "0.0.0.0") {
+  if (normalized === "::1" || normalized === "0.0.0.0") {
+    return true;
+  }
+  const parts = normalized.split(".");
+  if (parts.length === 4 && parts[0] === "127") {
     return true;
   }
   if (normalized.startsWith("10.")) return true;
@@ -32,7 +36,6 @@ function isPrivateIp(ip: string): boolean {
   if (normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe80")) {
     return true;
   }
-  const parts = normalized.split(".");
   if (parts.length === 4 && parts[0] === "100") {
     const second = Number(parts[1]);
     if (second >= 64 && second <= 127) return true;
