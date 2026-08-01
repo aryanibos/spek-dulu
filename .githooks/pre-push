@@ -17,18 +17,19 @@ while read -r _ local_ref local_sha remote_ref remote_sha; do
     continue
   fi
 
+  git fetch "$remote" main --quiet 2>/dev/null || true
+
+  export COMMIT_LIMIT_TZ="Asia/Jakarta"
+  export GIT_PUSH_TIP="$local_sha"
+
   if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
-    pending="$(git rev-list --count "${local_sha}" 2>/dev/null)" || {
-      echo "Could not count pending commits for new main branch push" >&2
-      exit 1
-    }
+    export GIT_BRANCH=""
+    export GIT_PUSH_BASE=""
   else
-    pending="$(git rev-list --count "${remote_sha}..${local_sha}" 2>/dev/null)" || {
-      echo "Could not count pending commits for main push" >&2
-      exit 1
-    }
+    export GIT_BRANCH="$remote_sha"
+    export GIT_PUSH_BASE="$remote_sha"
   fi
 
-  export PENDING_MAIN_COMMITS="$pending"
+  unset PENDING_MAIN_COMMITS
   npm run --silent check:main-commit-limit
 done
