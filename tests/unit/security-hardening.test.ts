@@ -60,11 +60,26 @@ describe("schema payload limits", () => {
 
 describe("URL hint blending", () => {
   it("applies extracted CSS hex hints into demo visual tokens", () => {
-    const base = buildDemoVisual("Inspired");
+    const base = buildDemoVisual("Reference");
     const blended = blendHintsIntoVisual(base, ["#112233"], "example.com");
 
     expect(blended.colors.find((c) => c.name === "Primary")?.hex).toBe("#112233");
     expect(blended.summary).toContain("example.com");
+  });
+
+  it("shifts extracted hints for Inspired originality mode", () => {
+    const base = buildDemoVisual("Inspired");
+    const blended = blendHintsIntoVisual(base, ["#112233"], "example.com");
+
+    expect(blended.colors.find((c) => c.name === "Primary")?.hex).not.toBe("#112233");
+  });
+
+  it("includes originality warnings when no CSS hints are found", () => {
+    const base = buildDemoVisual("Inspired");
+    const blended = blendHintsIntoVisual(base, [], "example.com");
+
+    expect(blended.warnings.some((w) => w.includes("Inspired mode"))).toBe(true);
+    expect(blended.warnings.some((w) => w.includes("No CSS color hints found"))).toBe(true);
   });
 });
 
