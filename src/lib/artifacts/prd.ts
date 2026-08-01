@@ -1,0 +1,302 @@
+import type { ProjectBlueprint } from "@/lib/schema";
+
+function featureList(
+  bp: ProjectBlueprint,
+  bucket: "build_now" | "build_later" | "do_not_build",
+) {
+  return bp.features
+    .filter((f) => f.bucket === bucket)
+    .map((f) => `- **${f.name}**: ${f.description}\n  - Why: ${f.reason}\n  - Complexity: ${f.complexity}`)
+    .join("\n");
+}
+
+function buildUserStories(bp: ProjectBlueprint): string {
+  const d = bp.decisions;
+  const stories: string[] = [];
+
+  stories.push(`### US-01 — Reach the core outcome
+**As a** ${d.targetUser},  
+**I want** to ${d.coreProblem.toLowerCase()},  
+**so that** I get value from ${d.productName} without extra complexity.`);
+
+  stories.push(`### US-02 — Follow the primary journey
+**As a** ${d.targetUser},  
+**I want** to complete this flow: ${d.primaryJourney},  
+**so that** the product proves its main job in one clear path.`);
+
+  bp.features
+    .filter((f) => f.bucket === "build_now")
+    .forEach((feature, index) => {
+      stories.push(`### US-${String(index + 3).padStart(2, "0")} — ${feature.name}
+**As a** ${d.targetUser},  
+**I want** ${feature.description.charAt(0).toLowerCase()}${feature.description.slice(1)},  
+**so that** ${feature.reason.charAt(0).toLowerCase()}${feature.reason.slice(1)}`);
+    });
+
+  bp.screens.forEach((screen, index) => {
+    stories.push(`### US-S${index + 1} — Use ${screen.name}
+**As a** ${d.targetUser},  
+**I want** a ${screen.name} screen,  
+**so that** ${screen.purpose.charAt(0).toLowerCase()}${screen.purpose.slice(1)}`);
+  });
+
+  return stories.join("\n\n");
+}
+
+function buildAcceptanceCriteria(bp: ProjectBlueprint): string {
+  const d = bp.decisions;
+  const lines: string[] = [];
+
+  lines.push(`### Core journey
+- [ ] ${d.targetUser} can complete: ${d.primaryJourney}
+- [ ] Empty, loading, and error states exist on primary screens
+- [ ] No Do Not Build feature appears in Phase 1`);
+
+  bp.acceptanceCriteria.forEach((ac) => {
+    lines.push(`### ${ac.id} (${ac.phase})
+- [ ] ${ac.text}`);
+  });
+
+  bp.features
+    .filter((f) => f.bucket === "build_now")
+    .forEach((feature) => {
+      lines.push(`### Feature: ${feature.name}
+- [ ] ${feature.description}
+- [ ] Happy path works with demo/sample data
+- [ ] Failure path shows a clear message`);
+    });
+
+  bp.screens.forEach((screen) => {
+    lines.push(`### Screen: ${screen.name}
+- [ ] Screen is reachable in the main navigation/flow
+- [ ] Purpose is fulfilled: ${screen.purpose}
+- [ ] Key components render: ${screen.components.join(", ")}`);
+  });
+
+  lines.push(`### Demo readiness
+- [ ] App builds successfully
+- [ ] Primary flow is demoable in under 3 minutes
+- [ ] Mobile and desktop layouts remain usable`);
+
+  return lines.join("\n\n");
+}
+
+function buildNonGoals(bp: ProjectBlueprint): string {
+  const deferred = bp.features
+    .filter((f) => f.bucket !== "build_now")
+    .map((f) => `- ${f.name}: ${f.reason}`);
+
+  const defaults = [
+    "- Multi-role permission systems beyond the primary user",
+    "- Polished marketing website separate from the product MVP",
+    "- Complex analytics, billing, or notification infrastructure",
+    "- Pixel-perfect cloning of any reference brand or website",
+    "- Features not required to prove the primary journey",
+  ];
+
+  if (!bp.decisions.mustHaveAuth) {
+    defaults.unshift("- Authentication and account management in Phase 1");
+  }
+  if (bp.decisions.dataMode === "local_demo") {
+    defaults.unshift("- Production backend, sync, or multi-device cloud storage in Phase 1");
+  }
+
+  return [...deferred, ...defaults].join("\n");
+}
+
+function buildConstraints(bp: ProjectBlueprint): string {
+  const d = bp.decisions;
+  const constraintAnswer = bp.answers.constraint;
+
+  return `### Time
+- Optimize for a short hackathon / one-day build window
+- Phase 1 must be demoable quickly
+- Prefer fewer screens and one primary journey
+${constraintAnswer ? `- Builder constraint: ${constraintAnswer}` : ""}
+
+### Cost
+- Keep infrastructure simple for the first version
+- Prefer ${d.dataMode === "local_demo" ? "local/demo data" : d.dataMode === "online_simple" ? "a simple online database" : "the minimum online sync needed"}
+- Avoid paid third-party services unless they are essential to the core loop
+
+### People
+- Assume a solo builder or very small team
+- Assume Cursor/AI-assisted implementation
+- Do not require a separate design, legal, or DevOps specialist for Phase 1
+
+### Technical
+- Recommended stack: ${d.recommendedStack.join(", ")}
+- Auth in Phase 1: ${d.mustHaveAuth ? "required" : "not required"}
+- Data mode: ${d.dataMode}
+- Keep architecture boring and reversible
+- Scope label from SpekDulu: ${bp.scope.label} (${bp.scope.score}/100)`;
+}
+
+export function renderFullPrd(bp: ProjectBlueprint): string {
+  const d = bp.decisions;
+  const today = new Date().toISOString().slice(0, 10);
+
+  return `# Product Requirements Document
+
+**Product:** ${d.productName}  
+**One-liner:** ${d.oneLiner}  
+**Generated by:** SpekDulu  
+**Date:** ${today}  
+**Status:** Locked MVP draft for Phase 1
+
+---
+
+## 1. What this PRD is
+
+This document defines **what we are building and why**, written down before Cursor starts coding.
+
+Use this PRD together with:
+- \`DESIGN.md\` and \`tokens.css\` for visual rules
+- \`IMPLEMENTATION.md\` and \`TASKS.md\` for build order
+- \`.cursor/skills/spekdulu/SKILL.md\` for Cursor execution rules
+
+---
+
+## 2. Problem
+
+${d.coreProblem.endsWith(".") ? d.coreProblem : `${d.coreProblem}.`}
+
+---
+
+## 3. Goal
+
+Help **${d.targetUser}** complete this outcome: **${d.oneLiner}**, using the smallest Phase 1 that still proves the product.
+
+Primary journey to protect:
+
+> ${d.primaryJourney}
+
+---
+
+## 4. Target user
+
+### Primary persona
+- **Who:** ${d.targetUser}
+- **Job to be done:** ${d.coreProblem}
+- **Success looks like:** Completing the primary journey without needing advanced features
+
+### Product framing
+- Product name: ${d.productName}
+- Raw idea captured by SpekDulu: ${bp.rawIdea}
+
+---
+
+## 5. User stories
+
+${buildUserStories(bp)}
+
+---
+
+## 6. Non-goals
+
+What we will **not** build in Phase 1:
+
+${buildNonGoals(bp)}
+
+SpekDulu intentionally cuts scope so Cursor does not invent extra product surface area.
+
+---
+
+## 7. Acceptance criteria
+
+How we know each story / Phase 1 item is done:
+
+${buildAcceptanceCriteria(bp)}
+
+---
+
+## 8. Constraints
+
+${buildConstraints(bp)}
+
+---
+
+## 9. Feature scope
+
+### Build now
+${featureList(bp, "build_now") || "- None selected"}
+
+### Build later
+${featureList(bp, "build_later") || "- None selected"}
+
+### Do not build
+${featureList(bp, "do_not_build") || "- None selected"}
+
+### Scope Meter
+- Score: ${bp.scope.score}/100
+- Label: ${bp.scope.label}
+- Summary: ${bp.scope.summary}
+
+Why this score:
+${bp.scope.reasons.map((r) => `- ${r}`).join("\n")}
+
+Recommended cuts:
+${bp.scope.recommendedCuts.map((r) => `- ${r}`).join("\n")}
+
+> Scope Meter is an AI-assisted assessment, not an objective grade.
+
+---
+
+## 10. Screens and information architecture
+
+${bp.screens
+  .map(
+    (s) => `### ${s.name} (${s.priority})
+- Purpose: ${s.purpose}
+- Components: ${s.components.join(", ")}`,
+  )
+  .join("\n\n")}
+
+---
+
+## 11. Data entities
+
+${bp.entities
+  .map(
+    (e) => `### ${e.name}
+- Fields: ${e.fields.join(", ")}
+${e.notes ? `- Notes: ${e.notes}` : ""}`,
+  )
+  .join("\n\n")}
+
+---
+
+## 12. Risks
+
+${d.risks.map((r) => `- ${r}`).join("\n")}
+- Scope creep back into Do Not Build features
+- Overbuilding auth/storage before the core journey works
+- Spending demo time on polish instead of the primary path
+
+---
+
+## 13. Success metrics
+
+### Phase 1 success
+${bp.acceptanceCriteria.map((a) => `- ${a.text}`).join("\n")}
+- A first-time user can understand the product in under 30 seconds
+- The primary journey can be demonstrated live without hidden setup steps
+
+### Product signals after Phase 1
+- Users complete the core action without assistance
+- Fewer correction prompts are needed when rebuilding with Cursor
+- No critical Phase 1 bug blocks the demo path
+
+---
+
+## 14. Definition of done
+
+Phase 1 is done when:
+
+- [ ] All Build now acceptance criteria pass
+- [ ] Non-goals remain out of the product
+- [ ] Constraints around time, cost, and people were respected
+- [ ] Cursor Skill / implementation docs still match the shipped MVP
+- [ ] The demo path works on desktop and mobile widths
+`;
+}

@@ -1,0 +1,9 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>SpekDulu</title>
+  <path d="M45 48C45 39.163 52.163 32 61 32H145V81L92 112L145 143V192H61C52.163 192 45 184.837 45 176V48Z" fill="#2196F3"/>
+  <path d="M111 112L145 92V132L111 112Z" fill="white"/>
+  <path d="M145 32L181 68H145V32Z" fill="#0F3D8A"/>
+  <path d="M211 208C211 216.837 203.837 224 195 224H111V175L164 144L111 113V64H195C203.837 64 211 71.163 211 80V208Z" fill="#2196F3"/>
+  <path d="M145 144L111 164V124L145 144Z" fill="white"/>
+  <path d="M111 224L75 188H111V224Z" fill="#0F3D8A"/>
+</svg>

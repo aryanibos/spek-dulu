@@ -1,0 +1,180 @@
+import { z } from "zod";
+
+export const originalityModeSchema = z.enum(["Reference", "Inspired", "Distinct"]);
+export type OriginalityMode = z.infer<typeof originalityModeSchema>;
+
+export const featureBucketSchema = z.enum(["build_now", "build_later", "do_not_build"]);
+export type FeatureBucket = z.infer<typeof featureBucketSchema>;
+
+export const featureItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  bucket: featureBucketSchema,
+  reason: z.string(),
+  complexity: z.enum(["low", "medium", "high"]),
+});
+
+export const productDecisionSchema = z.object({
+  productName: z.string(),
+  oneLiner: z.string(),
+  targetUser: z.string(),
+  coreProblem: z.string(),
+  primaryJourney: z.string(),
+  mustHaveAuth: z.boolean(),
+  dataMode: z.enum(["local_demo", "online_simple", "online_multiplayer"]),
+  recommendedStack: z.array(z.string()),
+  risks: z.array(z.string()),
+});
+
+export const screenSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  purpose: z.string(),
+  priority: z.enum(["p0", "p1", "p2"]),
+  components: z.array(z.string()),
+});
+
+export const entitySchema = z.object({
+  name: z.string(),
+  fields: z.array(z.string()),
+  notes: z.string().optional(),
+});
+
+export const acceptanceCriterionSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  phase: z.string(),
+});
+
+export const scopeAssessmentSchema = z.object({
+  score: z.number().min(0).max(100),
+  label: z.enum(["Lean MVP", "Balanced MVP", "Overloaded"]),
+  summary: z.string(),
+  reasons: z.array(z.string()),
+  recommendedCuts: z.array(z.string()),
+});
+
+export const colorTokenSchema = z.object({
+  name: z.string(),
+  hex: z.string(),
+  role: z.enum(["surface", "accent", "text", "border", "alert"]),
+  source: z.enum(["observed", "inferred", "generated"]),
+  confidence: z.number().min(0).max(100),
+  explanation: z.string(),
+});
+
+export const typographyTokenSchema = z.object({
+  family: z.string(),
+  category: z.enum(["heading", "body", "mono"]),
+  notes: z.string(),
+  confidence: z.number().min(0).max(100),
+});
+
+export const visualSpecSchema = z.object({
+  summary: z.string(),
+  originalityMode: originalityModeSchema,
+  colors: z.array(colorTokenSchema),
+  typography: z.array(typographyTokenSchema),
+  spacingScale: z.array(z.string()),
+  radii: z.object({
+    button: z.string(),
+    card: z.string(),
+    modal: z.string(),
+  }),
+  components: z.array(z.string()),
+  sections: z.array(z.string()),
+  warnings: z.array(z.string()),
+});
+
+export const documentKeySchema = z.enum([
+  "01_PRD",
+  "02_DESIGN_SYSTEM",
+  "03_INFORMATION_ARCHITECTURE",
+  "04_COMPONENT_LIBRARY",
+  "05_FRONTEND_ARCHITECTURE",
+  "06_BACKEND_ARCHITECTURE",
+  "07_DATABASE_SCHEMA",
+  "08_SEO_ACCESSIBILITY",
+  "09_IMPLEMENTATION_ROADMAP",
+  "10_DESIGN_ADAPTATION_GUIDE",
+  "11_MASTER_BUILD_PROMPT",
+]);
+
+export type DocumentKey = z.infer<typeof documentKeySchema>;
+
+export const specDocumentSchema = z.object({
+  key: documentKeySchema,
+  fileName: z.string(),
+  title: z.string(),
+  content: z.string(),
+  isDetailed: z.boolean(),
+  updatedAt: z.string(),
+});
+
+export const artifactSchema = z.object({
+  path: z.string(),
+  content: z.string(),
+});
+
+export const coherenceIssueSchema = z.object({
+  id: z.string(),
+  severity: z.enum(["error", "warning", "info"]),
+  source: z.string(),
+  target: z.string(),
+  message: z.string(),
+});
+
+export const coherenceReportSchema = z.object({
+  score: z.number().min(0).max(100),
+  status: z.enum(["Pristine", "Minor Warnings", "Action Required"]),
+  issues: z.array(coherenceIssueSchema),
+  checkedAt: z.string(),
+});
+
+export const chatMessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(["user", "assistant"]),
+  text: z.string(),
+  targetFile: z.string().optional(),
+  createdAt: z.string(),
+});
+
+export const documentVersionSchema = z.object({
+  id: z.string(),
+  documentKey: documentKeySchema,
+  content: z.string(),
+  summary: z.string(),
+  createdAt: z.string(),
+});
+
+export const projectBlueprintSchema = z.object({
+  id: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  rawIdea: z.string(),
+  answers: z.record(z.string(), z.string()),
+  decisions: productDecisionSchema,
+  features: z.array(featureItemSchema),
+  screens: z.array(screenSchema),
+  entities: z.array(entitySchema),
+  acceptanceCriteria: z.array(acceptanceCriterionSchema),
+  scope: scopeAssessmentSchema,
+  visual: visualSpecSchema.optional(),
+  documents: z.array(specDocumentSchema),
+  artifacts: z.array(artifactSchema),
+  coherence: coherenceReportSchema.optional(),
+  chat: z.array(chatMessageSchema).default([]),
+  versions: z.array(documentVersionSchema).default([]),
+  provider: z.enum(["demo", "gemini"]),
+  referenceUrl: z.string().optional(),
+  hasScreenshot: z.boolean().default(false),
+});
+
+export type ProjectBlueprint = z.infer<typeof projectBlueprintSchema>;
+export type ProductDecision = z.infer<typeof productDecisionSchema>;
+export type FeatureItem = z.infer<typeof featureItemSchema>;
+export type ScopeAssessment = z.infer<typeof scopeAssessmentSchema>;
+export type VisualSpec = z.infer<typeof visualSpecSchema>;
+export type SpecDocument = z.infer<typeof specDocumentSchema>;
+export type CoherenceReport = z.infer<typeof coherenceReportSchema>;
