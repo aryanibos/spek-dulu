@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowRight,
   Image as ImageIcon,
@@ -26,7 +26,6 @@ type Step = "idea" | "interview" | "review";
 
 export function Wizard() {
   const router = useRouter();
-  const reduceMotion = useReducedMotion();
   const [step, setStep] = useState<Step>("idea");
   const [idea, setIdea] = useState("");
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
@@ -165,9 +164,9 @@ export function Wizard() {
         {step === "idea" && (
           <motion.div
             key="idea"
-            initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
+            exit={{ opacity: 0, y: -8 }}
             className="grid gap-6 lg:grid-cols-[1.4fr_1fr]"
           >
             <Card className="p-5 sm:p-6">
@@ -256,7 +255,7 @@ export function Wizard() {
         {step === "interview" && currentQuestion && (
           <motion.div
             key={currentQuestion.id}
-            initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             className="mx-auto max-w-3xl"
           >
@@ -308,7 +307,7 @@ export function Wizard() {
         {step === "review" && blueprint && (
           <motion.div
             key="review"
-            initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-5"
           >
