@@ -18,6 +18,27 @@ function assertValidTimezone(timezone: string) {
   }
 }
 
+function resolveGitBranchRef(branch: string): string {
+  try {
+    execSync(`git rev-parse --verify ${branch}^{commit}`, {
+      stdio: "ignore",
+    });
+    return branch;
+  } catch {
+    const originRef = `origin/${branch}`;
+    try {
+      execSync(`git rev-parse --verify ${originRef}^{commit}`, {
+        stdio: "ignore",
+      });
+      return originRef;
+    } catch {
+      throw new Error(
+        `Git ref "${branch}" (or origin/${branch}) not found. Run: git fetch origin ${branch}`,
+      );
+    }
+  }
+}
+
 function readCommitTimestamps(ref: string): CommitTimestamp[] {
   const output = execSync(`git log ${ref} --first-parent --format=%cI`, {
     encoding: "utf8",
@@ -83,7 +104,9 @@ function main() {
   }
 
   const commits =
-    branch && branch !== ZERO_SHA ? readCommitTimestamps(branch) : [];
+    branch && branch !== ZERO_SHA
+      ? readCommitTimestamps(resolveGitBranchRef(branch))
+      : [];
   const commitsToday = countCommitsToday(commits, timezone);
   const pendingCommits = readPendingMainCommits(timezone);
   const result = evaluateDailyMainCommitLimit({

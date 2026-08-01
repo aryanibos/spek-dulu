@@ -17,7 +17,10 @@ while read -r _ local_ref local_sha remote_ref remote_sha; do
     continue
   fi
 
-  git fetch "$remote" main --quiet 2>/dev/null || true
+  if ! git fetch "$remote" main --quiet; then
+    echo "pre-push: gagal fetch ${remote}/main; push dibatalkan." >&2
+    exit 1
+  fi
 
   export COMMIT_LIMIT_TZ="Asia/Jakarta"
   export GIT_PUSH_TIP="$local_sha"
@@ -26,8 +29,9 @@ while read -r _ local_ref local_sha remote_ref remote_sha; do
     export GIT_BRANCH=""
     export GIT_PUSH_BASE=""
   else
-    export GIT_BRANCH="$remote_sha"
-    export GIT_PUSH_BASE="$remote_sha"
+    fresh_main="$(git rev-parse "${remote}/main")"
+    export GIT_BRANCH="$fresh_main"
+    export GIT_PUSH_BASE="$fresh_main"
   fi
 
   unset PENDING_MAIN_COMMITS
