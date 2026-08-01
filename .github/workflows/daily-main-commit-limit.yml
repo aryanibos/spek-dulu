@@ -41,6 +41,8 @@ jobs:
     needs: enforce-daily-main-commit-limit
     if: >
       github.event_name == 'pull_request' &&
+      contains(fromJSON('["opened", "synchronize", "reopened", "ready_for_review"]'), github.event.action) &&
+      !github.event.pull_request.merged &&
       startsWith(github.head_ref, 'cursor/') &&
       github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
@@ -58,6 +60,14 @@ jobs:
 
       - name: Fetch latest main
         run: git fetch origin main:main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Re-verify daily commit limit before merge
         env:

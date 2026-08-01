@@ -5,7 +5,10 @@ import {
   DEFAULT_COMMIT_LIMIT_TIMEZONE,
   DEFAULT_MAIN_DAILY_COMMIT_LIMIT,
   evaluateDailyMainCommitLimit,
+  type CommitTimestamp,
 } from "../src/lib/git/daily-main-commit-limit.ts";
+
+const ZERO_SHA = "0000000000000000000000000000000000000000";
 
 function assertValidTimezone(timezone: string) {
   try {
@@ -15,8 +18,8 @@ function assertValidTimezone(timezone: string) {
   }
 }
 
-function readMainCommitTimestamps(branch: string) {
-  const output = execSync(`git log ${branch} --first-parent --format=%cI`, {
+function readCommitTimestamps(ref: string): CommitTimestamp[] {
+  const output = execSync(`git log ${ref} --first-parent --format=%cI`, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -28,7 +31,31 @@ function readMainCommitTimestamps(branch: string) {
     .map((iso) => ({ committedAt: new Date(iso) }));
 }
 
-function readPendingMainCommits() {
+function readCommitTimestampsInRange(base: string, tip: string): CommitTimestamp[] {
+  const output = execSync(`git log ${base}..${tip} --first-parent --format=%cI`, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  return output
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((iso) => ({ committedAt: new Date(iso) }));
+}
+
+function readPendingMainCommits(timezone: string) {
+  const pushTip = process.env.GIT_PUSH_TIP;
+  const pushBase = process.env.GIT_PUSH_BASE;
+
+  if (pushTip) {
+    const commits =
+      !pushBase || pushBase === ZERO_SHA
+        ? readCommitTimestamps(pushTip)
+        : readCommitTimestampsInRange(pushBase, pushTip);
+    return countCommitsToday(commits, timezone);
+  }
+
   const raw = process.env.PENDING_MAIN_COMMITS ?? "0";
   const pending = Number.parseInt(raw, 10);
   if (!Number.isFinite(pending) || pending < 0) {
@@ -55,9 +82,10 @@ function main() {
     );
   }
 
-  const commits = readMainCommitTimestamps(branch);
+  const commits =
+    branch && branch !== ZERO_SHA ? readCommitTimestamps(branch) : [];
   const commitsToday = countCommitsToday(commits, timezone);
-  const pendingCommits = readPendingMainCommits();
+  const pendingCommits = readPendingMainCommits(timezone);
   const result = evaluateDailyMainCommitLimit({
     commitsToday,
     limit,

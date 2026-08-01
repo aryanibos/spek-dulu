@@ -94,4 +94,19 @@ describe("daily main commit limit", () => {
     expect(formatDayKey(resetAt, "Asia/Jakarta")).toBe("2026-08-02");
     expect(resetAt.getTime()).toBeGreaterThan(now.getTime());
   });
+
+  it("counts only commits from the configured day when filtering a range", () => {
+    const commits = [
+      { committedAt: new Date("2026-08-01T10:00:00.000Z") },
+      { committedAt: new Date("2026-07-30T10:00:00.000Z") },
+    ];
+
+    expect(
+      countCommitsToday(
+        commits,
+        "Asia/Jakarta",
+        new Date("2026-08-01T12:00:00.000Z"),
+      ),
+    ).toBe(1);
+  });
 });
