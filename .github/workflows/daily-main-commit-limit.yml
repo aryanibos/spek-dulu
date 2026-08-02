@@ -27,7 +27,7 @@ jobs:
         run: npm ci
 
       - name: Fetch latest main
-        run: git fetch origin main:main
+        run: git fetch origin main
 
       - name: Run unit tests
         run: npm test
