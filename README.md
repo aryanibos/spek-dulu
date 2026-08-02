@@ -90,6 +90,27 @@ Project documentation lives in [`doc/`](./doc):
 
 Deploy this repository to Vercel. Set `GEMINI_API_KEY` in project environment variables for live generation. Core screens remain usable in demo mode without it.
 
+## Kebijakan commit ke `main`
+
+Branch `main` dibatasi **maksimal 5 commit per hari** (reset tengah malam, zona waktu Asia/Jakarta). Setelah kuota habis, commit/merge ke `main` ditolak sampai reset keesokan pagi.
+
+### Auto-merge PR Cursor
+
+Pull request dari branch `cursor/*` (same-repo, bukan draft) **otomatis di-squash-merge ke `main`** setelah:
+
+- CI limit check lulus
+- Unit test lulus
+- Kuota harian masih tersedia
+
+Tidak perlu persetujuan manual. PR yang antre saat kuota habis akan dicoba lagi otomatis setiap tengah malam WIB.
+
+### Cek & hook lokal
+
+```bash
+npm run check:main-commit-limit   # cek kuota hari ini
+npm run setup:hooks               # aktifkan pre-push hook (wajib untuk push lokal ke main)
+```
+
 ## Notes
 
 - Hue shifts are adaptation aids, not legal clearance.
