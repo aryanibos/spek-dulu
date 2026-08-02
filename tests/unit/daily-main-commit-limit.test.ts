@@ -95,6 +95,40 @@ describe("daily main commit limit", () => {
     expect(resetAt.getTime()).toBeGreaterThan(now.getTime());
   });
 
+  it("validates an incoming push against the pre-push baseline", () => {
+    const mainBeforePush = [
+      { committedAt: new Date("2026-08-01T10:00:00.000Z") },
+      { committedAt: new Date("2026-08-01T11:00:00.000Z") },
+      { committedAt: new Date("2026-08-01T12:00:00.000Z") },
+      { committedAt: new Date("2026-08-01T13:00:00.000Z") },
+      { committedAt: new Date("2026-08-01T14:00:00.000Z") },
+    ];
+    const incomingPush = [{ committedAt: new Date("2026-08-01T15:00:00.000Z") }];
+    const commitsToday = countCommitsToday(
+      mainBeforePush,
+      "Asia/Jakarta",
+      new Date("2026-08-01T12:00:00.000Z"),
+    );
+    const pendingCommits = countCommitsToday(
+      incomingPush,
+      "Asia/Jakarta",
+      new Date("2026-08-01T12:00:00.000Z"),
+    );
+
+    const result = evaluateDailyMainCommitLimit({
+      commitsToday,
+      pendingCommits,
+      limit: 5,
+      timezone: "Asia/Jakarta",
+      now: new Date("2026-08-01T12:00:00.000Z"),
+    });
+
+    expect(commitsToday).toBe(5);
+    expect(pendingCommits).toBe(1);
+    expect(result.allowed).toBe(false);
+    expect(result.message).toContain("besok pagi");
+  });
+
   it("counts only commits from the configured day when filtering a range", () => {
     const commits = [
       { committedAt: new Date("2026-08-01T10:00:00.000Z") },

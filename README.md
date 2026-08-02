@@ -66,7 +66,20 @@ npm run lint
 npm run typecheck
 npm test
 npm run test:e2e
+npm run check:main-commit-limit
+npm run setup:hooks
 ```
+
+## Kebijakan commit ke `main`
+
+- Maksimal **5 commit/hari** ke branch `main` (zona waktu `Asia/Jakarta`).
+- Setelah batas tercapai, merge/push ke `main` ditolak sampai reset **besok pagi** (00:00 WIB).
+- PR dari branch `cursor/*` **auto-merge** ke `main` (squash) tanpa persetujuan manual, selama:
+  - batas harian belum penuh,
+  - CI (tes + cek limit) lulus,
+  - PR bukan draft dan berasal dari repo yang sama.
+- Antrian PR yang tertunda diproses otomatis setiap tengah malam WIB.
+- Hook lokal: jalankan `npm run setup:hooks` agar `git push` ke `main` dicek sebelum terkirim.
 
 ## Demo script (3-4 minutes)
 
