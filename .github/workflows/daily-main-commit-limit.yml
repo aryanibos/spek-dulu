@@ -6,12 +6,17 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
+  schedule:
+    # 00:00 Asia/Jakarta (UTC+7) — re-check open cursor PRs after daily reset
+    - cron: "0 17 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   enforce-daily-main-commit-limit:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout full history
@@ -41,6 +46,67 @@ jobs:
           PENDING_MAIN_COMMITS: ${{ github.event_name == 'pull_request' && '1' || '0' }}
         run: npm run check:main-commit-limit
 
+  midnight-merge-cursor-prs:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: auto-merge-cursor-pr-main
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch latest main
+        run: git fetch origin main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Auto-merge eligible cursor PRs after daily reset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_LIMIT_TZ: Asia/Jakarta
+          MAIN_DAILY_COMMIT_LIMIT: "5"
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+
+          mapfile -t prs < <(
+            gh pr list \
+              --base main \
+              --state open \
+              --json number,headRefName,isDraft,headRepositoryOwner \
+              --jq '.[] | select(.headRefName | startswith("cursor/")) | select(.isDraft == false) | select(.headRepositoryOwner.login == env.REPO_OWNER) | .number'
+          )
+
+          if ((${#prs[@]} == 0)); then
+            echo "No open cursor PRs to merge."
+            exit 0
+          fi
+
+          for pr in "${prs[@]}"; do
+            echo "Checking PR #${pr}..."
+            if ! GIT_BRANCH=origin/main PENDING_MAIN_COMMITS=1 npm run --silent check:main-commit-limit; then
+              echo "Daily limit reached; stopping midnight merge queue."
+              break
+            fi
+
+            head_sha="$(gh pr view "$pr" --json headRefOid -q .headRefOid)"
+            gh pr merge "$pr" --squash --delete-branch --admin
+            echo "Merged PR #${pr} at ${head_sha}."
+            git fetch origin main
+          done
+
   auto-merge-cursor-pr:
     needs: enforce-daily-main-commit-limit
     if: >
@@ -48,6 +114,7 @@ jobs:
       contains(fromJSON('["opened", "synchronize", "reopened", "ready_for_review"]'), github.event.action) &&
       !github.event.pull_request.merged &&
       !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
       startsWith(github.event.pull_request.head.ref, 'cursor/') &&
       github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
@@ -81,6 +148,17 @@ jobs:
           MAIN_DAILY_COMMIT_LIMIT: "5"
           PENDING_MAIN_COMMITS: "1"
         run: npm run check:main-commit-limit
+
+      - name: Verify PR head SHA before merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          expected_sha="${{ github.event.pull_request.head.sha }}"
+          current_sha="$(gh pr view "${{ github.event.pull_request.number }}" --json headRefOid -q .headRefOid)"
+          if [[ "$current_sha" != "$expected_sha" ]]; then
+            echo "PR head moved since checks started ($expected_sha -> $current_sha); aborting merge."
+            exit 1
+          fi
 
       - name: Squash merge cursor PR to main
         env:
