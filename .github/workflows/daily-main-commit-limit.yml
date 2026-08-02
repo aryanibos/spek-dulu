@@ -3,6 +3,7 @@ name: Daily main commit limit
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
@@ -34,7 +35,7 @@ jobs:
 
       - name: Verify daily commit limit on main
         env:
-          GIT_BRANCH: main
+          GIT_BRANCH: origin/main
           COMMIT_LIMIT_TZ: Asia/Jakarta
           MAIN_DAILY_COMMIT_LIMIT: "5"
           PENDING_MAIN_COMMITS: ${{ github.event_name == 'pull_request' && '1' || '0' }}
@@ -46,6 +47,7 @@ jobs:
       github.event_name == 'pull_request' &&
       contains(fromJSON('["opened", "synchronize", "reopened", "ready_for_review"]'), github.event.action) &&
       !github.event.pull_request.merged &&
+      !github.event.pull_request.draft &&
       startsWith(github.event.pull_request.head.ref, 'cursor/') &&
       github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
@@ -74,7 +76,7 @@ jobs:
 
       - name: Re-verify daily commit limit before merge
         env:
-          GIT_BRANCH: main
+          GIT_BRANCH: origin/main
           COMMIT_LIMIT_TZ: Asia/Jakarta
           MAIN_DAILY_COMMIT_LIMIT: "5"
           PENDING_MAIN_COMMITS: "1"

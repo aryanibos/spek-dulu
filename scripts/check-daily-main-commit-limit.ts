@@ -20,7 +20,9 @@ function assertValidTimezone(timezone: string) {
 
 function resolveGitBranchRef(branch: string): string {
   const candidates =
-    branch === "main" ? [branch, "origin/main"] : [branch, `origin/${branch}`];
+    branch === "main" || branch === "origin/main"
+      ? ["origin/main", "main"]
+      : [branch, `origin/${branch}`];
 
   for (const candidate of candidates) {
     try {

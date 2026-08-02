@@ -22,6 +22,8 @@ while read -r _ local_ref local_sha remote_ref remote_sha; do
     exit 1
   fi
 
+  remote_main="$(git rev-parse "${remote}/main")"
+
   export COMMIT_LIMIT_TZ="Asia/Jakarta"
   export GIT_PUSH_TIP="$local_sha"
 
@@ -29,8 +31,8 @@ while read -r _ local_ref local_sha remote_ref remote_sha; do
     export GIT_BRANCH=""
     export GIT_PUSH_BASE=""
   else
-    export GIT_BRANCH="$remote_sha"
-    export GIT_PUSH_BASE="$remote_sha"
+    export GIT_BRANCH="$remote_main"
+    export GIT_PUSH_BASE="$remote_main"
   fi
 
   unset PENDING_MAIN_COMMITS
