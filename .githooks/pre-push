@@ -17,17 +17,22 @@ while read -r _ local_ref local_sha remote_ref remote_sha; do
     continue
   fi
 
-  git fetch "$remote" main --quiet 2>/dev/null || true
+  if ! git fetch "$remote" main --quiet; then
+    echo "Gagal fetch $remote/main; tidak bisa verifikasi batas commit harian." >&2
+    exit 1
+  fi
+
+  fresh_remote_sha="$(git rev-parse "$remote/main")"
 
   export COMMIT_LIMIT_TZ="Asia/Jakarta"
   export GIT_PUSH_TIP="$local_sha"
 
-  if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
+  if [[ "$fresh_remote_sha" == "0000000000000000000000000000000000000000" ]]; then
     export GIT_BRANCH=""
     export GIT_PUSH_BASE=""
   else
-    export GIT_BRANCH="$remote_sha"
-    export GIT_PUSH_BASE="$remote_sha"
+    export GIT_BRANCH="$fresh_remote_sha"
+    export GIT_PUSH_BASE="$fresh_remote_sha"
   fi
 
   unset PENDING_MAIN_COMMITS

@@ -10,6 +10,37 @@ import {
 
 const ZERO_SHA = "0000000000000000000000000000000000000000";
 
+function gitRefExists(ref: string): boolean {
+  try {
+    execSync(`git rev-parse --verify ${ref}^{commit}`, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function resolveGitBranchRef(branch: string): string | null {
+  if (!branch || branch === ZERO_SHA) {
+    return null;
+  }
+
+  if (gitRefExists(branch)) {
+    return branch;
+  }
+
+  const remoteRef = `origin/${branch}`;
+  if (gitRefExists(remoteRef)) {
+    return remoteRef;
+  }
+
+  throw new Error(
+    `Cannot resolve git ref "${branch}" or "${remoteRef}" for commit limit check`,
+  );
+}
+
 function assertValidTimezone(timezone: string) {
   try {
     new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
@@ -82,8 +113,8 @@ function main() {
     );
   }
 
-  const commits =
-    branch && branch !== ZERO_SHA ? readCommitTimestamps(branch) : [];
+  const resolvedBranch = resolveGitBranchRef(branch);
+  const commits = resolvedBranch ? readCommitTimestamps(resolvedBranch) : [];
   const commitsToday = countCommitsToday(commits, timezone);
   const pendingCommits = readPendingMainCommits(timezone);
   const result = evaluateDailyMainCommitLimit({
