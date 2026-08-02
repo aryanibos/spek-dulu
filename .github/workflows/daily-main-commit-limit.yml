@@ -86,7 +86,8 @@ jobs:
               --base main \
               --state open \
               --json number,headRefName,isDraft,headRepositoryOwner \
-              --jq '.[] | select(.headRefName | startswith("cursor/")) | select(.isDraft == false) | select(.headRepositoryOwner.login == env.REPO_OWNER) | .number'
+              --jq '.[] | select(.headRefName | startswith("cursor/")) | select(.isDraft == false) | select(.headRepositoryOwner.login == $REPO_OWNER) | .number' \
+              --arg REPO_OWNER "$REPO_OWNER"
           )
 
           if ((${#prs[@]} == 0)); then
@@ -96,12 +97,19 @@ jobs:
 
           for pr in "${prs[@]}"; do
             echo "Checking PR #${pr}..."
+            head_sha="$(gh pr view "$pr" --json headRefOid -q .headRefOid)"
+
             if ! GIT_BRANCH=origin/main PENDING_MAIN_COMMITS=1 npm run --silent check:main-commit-limit; then
               echo "Daily limit reached; stopping midnight merge queue."
               break
             fi
 
-            head_sha="$(gh pr view "$pr" --json headRefOid -q .headRefOid)"
+            current_sha="$(gh pr view "$pr" --json headRefOid -q .headRefOid)"
+            if [[ "$current_sha" != "$head_sha" ]]; then
+              echo "PR #${pr} head moved (${head_sha} -> ${current_sha}); skipping."
+              continue
+            fi
+
             gh pr merge "$pr" --squash --delete-branch --admin
             echo "Merged PR #${pr} at ${head_sha}."
             git fetch origin main
