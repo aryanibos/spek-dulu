@@ -8,7 +8,7 @@ if [[ -z "$remote" || -z "$url" ]]; then
   exit 0
 fi
 
-while read -r _ local_ref local_sha remote_ref remote_sha; do
+while read -r local_ref local_sha remote_ref remote_sha; do
   if [[ "$remote_ref" != "refs/heads/main" ]]; then
     continue
   fi
