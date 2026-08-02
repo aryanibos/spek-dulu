@@ -40,10 +40,12 @@ jobs:
 
       - name: Verify daily commit limit on main
         env:
-          GIT_BRANCH: origin/main
           COMMIT_LIMIT_TZ: Asia/Jakarta
           MAIN_DAILY_COMMIT_LIMIT: "5"
-          PENDING_MAIN_COMMITS: ${{ github.event_name == 'pull_request' && '1' || '0' }}
+          GIT_BRANCH: ${{ github.event_name == 'push' && github.event.before || 'origin/main' }}
+          GIT_PUSH_BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
+          GIT_PUSH_TIP: ${{ github.event_name == 'push' && github.event.after || '' }}
+          PENDING_MAIN_COMMITS: ${{ github.event_name == 'pull_request' && '1' || '' }}
         run: npm run check:main-commit-limit
 
   midnight-merge-cursor-prs:
@@ -86,7 +88,8 @@ jobs:
               --base main \
               --state open \
               --json number,headRefName,isDraft,headRepositoryOwner \
-              --jq '.[] | select(.headRefName | startswith("cursor/")) | select(.isDraft == false) | select(.headRepositoryOwner.login == env.REPO_OWNER) | .number'
+              --jq '.[] | select(.headRefName | startswith("cursor/")) | select(.isDraft == false) | select(.headRepositoryOwner.login == $REPO_OWNER) | .number' \
+              --arg REPO_OWNER "$REPO_OWNER"
           )
 
           if ((${#prs[@]} == 0)); then
@@ -96,14 +99,32 @@ jobs:
 
           for pr in "${prs[@]}"; do
             echo "Checking PR #${pr}..."
+
+            if [[ "$(gh pr view "$pr" --json isDraft -q .isDraft)" == "true" ]]; then
+              echo "PR #${pr} is draft; skipping."
+              continue
+            fi
+
+            head_sha="$(gh pr view "$pr" --json headRefOid -q .headRefOid)"
+
             if ! GIT_BRANCH=origin/main PENDING_MAIN_COMMITS=1 npm run --silent check:main-commit-limit; then
               echo "Daily limit reached; stopping midnight merge queue."
               break
             fi
 
-            head_sha="$(gh pr view "$pr" --json headRefOid -q .headRefOid)"
+            gh pr checkout "$pr" --force
+            npm test
+
+            current_sha="$(gh pr view "$pr" --json headRefOid -q .headRefOid)"
+            if [[ "$current_sha" != "$head_sha" ]]; then
+              echo "PR #${pr} head moved since checks started ($head_sha -> $current_sha); skipping."
+              git checkout -
+              continue
+            fi
+
             gh pr merge "$pr" --squash --delete-branch --admin
             echo "Merged PR #${pr} at ${head_sha}."
+            git checkout -
             git fetch origin main
           done
 
@@ -131,7 +152,7 @@ jobs:
           fetch-depth: 0
 
       - name: Fetch latest main
-        run: git fetch origin main:main
+        run: git fetch origin main
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
