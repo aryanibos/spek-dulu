@@ -18,6 +18,24 @@ function assertValidTimezone(timezone: string) {
   }
 }
 
+function resolveGitBranchRef(branch: string): string {
+  const candidates =
+    branch === "main" ? [branch, "origin/main"] : [branch, `origin/${branch}`];
+
+  for (const candidate of candidates) {
+    try {
+      execSync(`git rev-parse --verify ${candidate}^{commit}`, {
+        stdio: "ignore",
+      });
+      return candidate;
+    } catch {
+      // try next candidate
+    }
+  }
+
+  throw new Error(`Cannot resolve git ref for branch "${branch}"`);
+}
+
 function readCommitTimestamps(ref: string): CommitTimestamp[] {
   const output = execSync(`git log ${ref} --first-parent --format=%cI`, {
     encoding: "utf8",
@@ -82,8 +100,9 @@ function main() {
     );
   }
 
-  const commits =
-    branch && branch !== ZERO_SHA ? readCommitTimestamps(branch) : [];
+  const branchRef =
+    branch && branch !== ZERO_SHA ? resolveGitBranchRef(branch) : "";
+  const commits = branchRef ? readCommitTimestamps(branchRef) : [];
   const commitsToday = countCommitsToday(commits, timezone);
   const pendingCommits = readPendingMainCommits(timezone);
   const result = evaluateDailyMainCommitLimit({

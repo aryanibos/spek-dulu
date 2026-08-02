@@ -17,7 +17,10 @@ while read -r _ local_ref local_sha remote_ref remote_sha; do
     continue
   fi
 
-  git fetch "$remote" main --quiet 2>/dev/null || true
+  if ! git fetch "$remote" main --quiet 2>/dev/null; then
+    echo "Could not fetch latest main from ${remote}; aborting push." >&2
+    exit 1
+  fi
 
   export COMMIT_LIMIT_TZ="Asia/Jakarta"
   export GIT_PUSH_TIP="$local_sha"
