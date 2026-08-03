@@ -62,6 +62,13 @@ export function getNextMorningReset(
   return new Date(hi);
 }
 
+export function isDailyMainCommitQuotaExhausted(
+  commitsToday: number,
+  limit: number = DEFAULT_MAIN_DAILY_COMMIT_LIMIT,
+): boolean {
+  return commitsToday >= limit;
+}
+
 export function evaluateDailyMainCommitLimit(options: {
   commitsToday: number;
   limit?: number;

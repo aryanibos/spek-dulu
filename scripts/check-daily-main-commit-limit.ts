@@ -5,6 +5,7 @@ import {
   DEFAULT_COMMIT_LIMIT_TIMEZONE,
   DEFAULT_MAIN_DAILY_COMMIT_LIMIT,
   evaluateDailyMainCommitLimit,
+  isDailyMainCommitQuotaExhausted,
   type CommitTimestamp,
 } from "../src/lib/git/daily-main-commit-limit.ts";
 
@@ -115,6 +116,14 @@ function main() {
   });
 
   console.log(result.message);
+
+  if (
+    process.env.STOP_WHEN_AT_LIMIT === "1" &&
+    isDailyMainCommitQuotaExhausted(commitsToday, limit)
+  ) {
+    process.exit(1);
+  }
+
   if (!result.allowed) {
     process.exit(1);
   }

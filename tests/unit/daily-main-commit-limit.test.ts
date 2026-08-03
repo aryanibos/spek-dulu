@@ -4,9 +4,15 @@ import {
   evaluateDailyMainCommitLimit,
   formatDayKey,
   getNextMorningReset,
+  isDailyMainCommitQuotaExhausted,
 } from "@/lib/git/daily-main-commit-limit";
 
 describe("daily main commit limit", () => {
+  it("reports quota exhausted once the daily limit is reached", () => {
+    expect(isDailyMainCommitQuotaExhausted(5, 5)).toBe(true);
+    expect(isDailyMainCommitQuotaExhausted(4, 5)).toBe(false);
+  });
+
   it("counts commits by calendar day in the configured timezone", () => {
     const commits = [
       { committedAt: new Date("2026-08-01T16:00:00.000Z") },
