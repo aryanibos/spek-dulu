@@ -152,7 +152,7 @@ describe("artifact generation", () => {
           return { ...doc, content: "CUSTOM PRD CONTENT" };
         }
         if (doc.key === "02_DESIGN_SYSTEM") {
-          return { ...doc, content: "STALE DESIGN CONTENT" };
+          return { ...doc, content: "STALE DESIGN CONTENT", isDetailed: false };
         }
         return doc;
       }),
@@ -168,6 +168,37 @@ describe("artifact generation", () => {
     );
     expect(enriched.documents.find((d) => d.key === "02_DESIGN_SYSTEM")?.content).toContain(
       "Visual direction",
+    );
+    expect(enriched.documents.find((d) => d.key === "10_DESIGN_ADAPTATION_GUIDE")?.content).toContain(
+      "Adaptation",
+    );
+  });
+
+  it("preserves user-refined documents when regenerating selected keys", () => {
+    const base = enrichBlueprint(
+      buildDemoBlueprint("Aplikasi pencatat utang warung", {
+        user: "Solo shop owner",
+        job: "Record debt and mark it paid",
+        auth: "demo_profile",
+        data: "local_demo",
+        constraint: "Three screens max in Phase 1",
+      }),
+    );
+    const withRefinedDesign = {
+      ...base,
+      documents: base.documents.map((doc) =>
+        doc.key === "02_DESIGN_SYSTEM"
+          ? { ...doc, content: "USER REFINED DESIGN", isDetailed: true }
+          : doc,
+      ),
+    };
+
+    const enriched = enrichBlueprint(withRefinedDesign, {
+      regenerateDocumentKeys: ["02_DESIGN_SYSTEM", "10_DESIGN_ADAPTATION_GUIDE"],
+    });
+
+    expect(enriched.documents.find((d) => d.key === "02_DESIGN_SYSTEM")?.content).toBe(
+      "USER REFINED DESIGN",
     );
     expect(enriched.documents.find((d) => d.key === "10_DESIGN_ADAPTATION_GUIDE")?.content).toContain(
       "Adaptation",

@@ -161,9 +161,15 @@ export function enrichBlueprint(
     const fresh = Object.fromEntries(
       renderAllDocuments(bp, true).map((doc) => [doc.key, doc]),
     ) as Partial<Record<DocumentKey, (typeof bp.documents)[number]>>;
-    documents = bp.documents.map((doc) => (keys.has(doc.key) ? (fresh[doc.key] ?? doc) : doc));
+    documents = bp.documents.map((doc) =>
+      keys.has(doc.key) && !doc.isDetailed ? (fresh[doc.key] ?? doc) : doc,
+    );
     for (const key of options.regenerateDocumentKeys) {
-      if (!documents.some((doc) => doc.key === key) && fresh[key]) {
+      if (
+        !documents.some((doc) => doc.key === key) &&
+        fresh[key] &&
+        !bp.documents.some((doc) => doc.key === key && doc.isDetailed)
+      ) {
         documents.push(fresh[key]!);
       }
     }
