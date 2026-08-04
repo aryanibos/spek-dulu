@@ -94,6 +94,7 @@ export async function fetchSafePublicHtml(raw: string): Promise<string> {
   let url = await assertSafePublicUrl(raw);
 
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    url = await assertSafePublicUrl(url.toString());
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
     try {
