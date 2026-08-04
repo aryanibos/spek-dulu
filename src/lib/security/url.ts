@@ -20,6 +20,16 @@ function normalizeIp(ip: string): string {
   return stripped;
 }
 
+function isLinkLocalIpv6(ip: string): boolean {
+  if (!ip.includes(":")) return false;
+  const firstHextet = ip.split(":")[0];
+  if (!firstHextet) return false;
+  const value = Number.parseInt(firstHextet, 16);
+  if (!Number.isFinite(value)) return false;
+  // fe80::/10 — link-local (fe80 through febf)
+  return value >= 0xfe80 && value <= 0xfebf;
+}
+
 function isPrivateIp(ip: string): boolean {
   const normalized = normalizeIp(ip);
   if (normalized.startsWith("127.") || normalized === "::1" || normalized === "0.0.0.0") {
@@ -29,7 +39,11 @@ function isPrivateIp(ip: string): boolean {
   if (normalized.startsWith("192.168.")) return true;
   if (normalized.startsWith("169.254.")) return true;
   if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(normalized)) return true;
-  if (normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe80")) {
+  if (
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd") ||
+    isLinkLocalIpv6(normalized)
+  ) {
     return true;
   }
   const parts = normalized.split(".");

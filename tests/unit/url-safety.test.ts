@@ -32,4 +32,15 @@ describe("url safety", () => {
       /credentials/i,
     );
   });
+
+  it("blocks IPv6 loopback and unique-local", async () => {
+    await expect(assertSafePublicUrl("http://[::1]")).rejects.toThrow();
+    await expect(assertSafePublicUrl("http://[fc00::1]")).rejects.toThrow();
+  });
+
+  it("blocks full IPv6 link-local range (fe80::/10)", async () => {
+    await expect(assertSafePublicUrl("http://[fe80::1]")).rejects.toThrow();
+    await expect(assertSafePublicUrl("http://[fe81::1]")).rejects.toThrow();
+    await expect(assertSafePublicUrl("http://[febf::1]")).rejects.toThrow();
+  });
 });
