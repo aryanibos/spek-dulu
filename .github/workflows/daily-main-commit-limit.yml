@@ -113,6 +113,11 @@ jobs:
               continue
             fi
 
+            if ! gh pr checks "$pr" --required; then
+              echo "PR #${pr} required checks not passing; skipping."
+              continue
+            fi
+
             gh pr merge "$pr" --squash --delete-branch --admin
             echo "Merged PR #${pr} at ${head_sha}."
             git fetch origin main

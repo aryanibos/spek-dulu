@@ -74,11 +74,13 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
           setLoading(false);
           return;
         }
-        const enriched = saved.documents.length ? saved : enrichBlueprint(saved);
+        const needsEnrich =
+          !saved.documents.length || !saved.artifacts?.length;
+        const enriched = needsEnrich ? enrichBlueprint(saved) : saved;
         setProject(enriched);
         setVisualMode(enriched.visual?.originalityMode ?? "Inspired");
         setVisualUrl(enriched.referenceUrl ?? "");
-        if (!saved.documents.length) await saveProject(enriched);
+        if (needsEnrich) await saveProject(enriched);
         try {
           setSuggestions(await fetchDesignSuggestions(enriched));
         } catch {

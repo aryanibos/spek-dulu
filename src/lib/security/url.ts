@@ -196,7 +196,7 @@ export async function assertSafePublicUrl(raw: string): Promise<URL> {
 export async function fetchSafePublicHtml(raw: string): Promise<string> {
   let url = await assertSafePublicUrl(raw);
 
-  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+  for (let hop = 0; ; hop++) {
     url = await assertSafePublicUrl(url.toString());
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
@@ -210,8 +210,12 @@ export async function fetchSafePublicHtml(raw: string): Promise<string> {
       });
 
       if (response.status >= 300 && response.status < 400) {
+        if (hop >= MAX_REDIRECTS) {
+          throw new Error("Too many redirects.");
+        }
         const location = response.headers.get("location");
         if (!location) throw new Error("Redirect missing Location header.");
+        await response.body?.cancel();
         url = await assertSafePublicUrl(new URL(location, url).toString());
         continue;
       }
@@ -238,6 +242,4 @@ export async function fetchSafePublicHtml(raw: string): Promise<string> {
       clearTimeout(timer);
     }
   }
-
-  throw new Error("Too many redirects.");
 }
