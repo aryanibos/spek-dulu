@@ -26,6 +26,28 @@ function expandIpv6(ip: string): string[] | null {
   return [...head, ...Array(missing).fill("0"), ...tail];
 }
 
+function extract6to4Ipv4(expanded: string[]): string | null {
+  if (expanded.length !== 8) return null;
+  if (Number.parseInt(expanded[0] ?? "", 16) !== 0x2002) return null;
+
+  const hi = Number.parseInt(expanded[1] ?? "", 16);
+  const lo = Number.parseInt(expanded[2] ?? "", 16);
+  return `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+}
+
+function extractEmbeddedIpv4(expanded: string[]): string | null {
+  for (const hextet of expanded) {
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(hextet)) {
+      return hextet;
+    }
+  }
+  return null;
+}
+
+function hasIpv4MappedPrefix(expanded: string[]): boolean {
+  return expanded.some((hextet) => Number.parseInt(hextet, 16) === 0xffff);
+}
+
 function extractIpv4Mapped(ip: string): string | null {
   const stripped = ip.replace(/^\[|\]$/g, "").toLowerCase();
 
@@ -41,6 +63,20 @@ function extractIpv4Mapped(ip: string): string | null {
   const expanded = expandIpv6(stripped);
   if (!expanded || expanded.length !== 8) return null;
 
+  const sixToFour = extract6to4Ipv4(expanded);
+  if (sixToFour) return sixToFour;
+
+  const embedded = extractEmbeddedIpv4(expanded);
+  if (embedded && hasIpv4MappedPrefix(expanded)) return embedded;
+
+  if (hasIpv4MappedPrefix(expanded)) {
+    const tailMapped = decodeIpv4MappedHextets(
+      expanded[6] ?? "",
+      expanded[7] ?? "",
+    );
+    if (tailMapped !== "0.0.0.0") return tailMapped;
+  }
+
   const prefixZero = expanded.slice(0, 5).every((hextet) => Number.parseInt(hextet, 16) === 0);
   if (!prefixZero || Number.parseInt(expanded[5] ?? "", 16) !== 0xffff) return null;
 
@@ -53,13 +89,23 @@ function normalizeIp(ip: string): string {
   return ip.replace(/^\[|\]$/g, "").toLowerCase();
 }
 
-function isLinkLocalIpv6(ip: string): boolean {
-  const expanded = expandIpv6(ip);
-  if (!expanded || expanded.length === 0) return false;
-  const value = Number.parseInt(expanded[0] ?? "", 16);
+function isLinkLocalHextet(hextet: string): boolean {
+  const value = Number.parseInt(hextet, 16);
   if (!Number.isFinite(value)) return false;
   // fe80::/10 — link-local (fe80 through febf)
   return value >= 0xfe80 && value <= 0xfebf;
+}
+
+function isLinkLocalIpv6(ip: string): boolean {
+  const expanded = expandIpv6(ip);
+  if (!expanded || expanded.length !== 8) return false;
+
+  if (isLinkLocalHextet(expanded[0] ?? "")) return true;
+
+  // Catch compressed forms like ::fe80:1 that embed link-local hextets after ::.
+  const leadingZeros = expanded.findIndex((hextet) => Number.parseInt(hextet, 16) !== 0);
+  if (leadingZeros < 0) return false;
+  return expanded.slice(leadingZeros).some((hextet) => isLinkLocalHextet(hextet));
 }
 
 function isPrivateIp(ip: string): boolean {
