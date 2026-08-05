@@ -291,6 +291,8 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
           : doc,
       );
       await persist(enrichBlueprint({ ...current, documents: updatedDocs }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Restore failed.");
     } finally {
       setBusy(false);
     }

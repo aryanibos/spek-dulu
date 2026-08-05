@@ -15,8 +15,9 @@ describe("url safety", () => {
     await expect(assertSafePublicUrl("http://127.255.255.254")).rejects.toThrow();
   });
 
-  it("blocks 0.0.0.0", async () => {
+  it("blocks 0.0.0.0/8", async () => {
     await expect(assertSafePublicUrl("http://0.0.0.0")).rejects.toThrow();
+    await expect(assertSafePublicUrl("http://0.5.5.5")).rejects.toThrow();
   });
 
   it("blocks CGNAT range", async () => {
@@ -72,5 +73,10 @@ describe("url safety", () => {
   it("blocks 6to4 addresses that embed private IPv4", async () => {
     await expect(assertSafePublicUrl("http://[2002:7f00:0001::]")).rejects.toThrow();
     await expect(assertSafePublicUrl("http://[2002:ac10:0001::]")).rejects.toThrow();
+  });
+
+  it("blocks NAT64 addresses that embed private IPv4", async () => {
+    await expect(assertSafePublicUrl("http://[64:ff9b::7f00:1]")).rejects.toThrow();
+    await expect(assertSafePublicUrl("http://[64:ff9b::a9fe:a9fe]")).rejects.toThrow();
   });
 });

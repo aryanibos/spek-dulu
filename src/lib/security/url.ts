@@ -35,6 +35,17 @@ function extract6to4Ipv4(expanded: string[]): string | null {
   return `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
 }
 
+function extractNat64Ipv4(expanded: string[]): string | null {
+  if (expanded.length !== 8) return null;
+  if (Number.parseInt(expanded[0] ?? "", 16) !== 0x0064) return null;
+  if (Number.parseInt(expanded[1] ?? "", 16) !== 0xff9b) return null;
+  if (expanded.slice(2, 6).some((hextet) => Number.parseInt(hextet, 16) !== 0)) {
+    return null;
+  }
+
+  return decodeIpv4MappedHextets(expanded[6] ?? "", expanded[7] ?? "");
+}
+
 function extractEmbeddedIpv4(expanded: string[]): string | null {
   for (const hextet of expanded) {
     if (/^\d+\.\d+\.\d+\.\d+$/.test(hextet)) {
@@ -65,6 +76,9 @@ function extractIpv4Mapped(ip: string): string | null {
 
   const sixToFour = extract6to4Ipv4(expanded);
   if (sixToFour) return sixToFour;
+
+  const nat64 = extractNat64Ipv4(expanded);
+  if (nat64) return nat64;
 
   const embedded = extractEmbeddedIpv4(expanded);
   if (embedded && hasIpv4MappedPrefix(expanded)) return embedded;
@@ -132,8 +146,7 @@ function isPrivateIp(ip: string): boolean {
     normalized.startsWith("127.") ||
     normalized === "::1" ||
     normalized === "::" ||
-    normalized === "::0" ||
-    normalized === "0.0.0.0"
+    normalized === "::0"
   ) {
     return true;
   }
@@ -150,9 +163,13 @@ function isPrivateIp(ip: string): boolean {
     return true;
   }
   const parts = normalized.split(".");
-  if (parts.length === 4 && parts[0] === "100") {
-    const second = Number(parts[1]);
-    if (second >= 64 && second <= 127) return true;
+  if (parts.length === 4) {
+    const first = Number(parts[0]);
+    if (first === 0) return true;
+    if (first === 100) {
+      const second = Number(parts[1]);
+      if (second >= 64 && second <= 127) return true;
+    }
   }
   return false;
 }
@@ -234,7 +251,10 @@ export async function fetchSafePublicHtml(raw: string): Promise<string> {
         const { done, value } = await reader.read();
         if (done) break;
         bytes += value.byteLength;
-        if (bytes > MAX_HTML_BYTES) break;
+        if (bytes > MAX_HTML_BYTES) {
+          await reader.cancel();
+          break;
+        }
         result += decoder.decode(value, { stream: true });
       }
       return result;
