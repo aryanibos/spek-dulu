@@ -176,6 +176,15 @@ jobs:
             exit 1
           fi
 
+      - name: Verify required checks before merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh pr checks "${{ github.event.pull_request.number }}" --required; then
+            echo "Required checks not passing; aborting merge."
+            exit 1
+          fi
+
       - name: Squash merge cursor PR to main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
