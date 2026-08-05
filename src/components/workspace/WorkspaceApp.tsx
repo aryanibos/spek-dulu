@@ -108,8 +108,14 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   const activeDoc = project?.documents.find((d) => d.key === activeKey) ?? docs[0];
 
   async function persist(next: ProjectBlueprint) {
+    const previous = project;
     setProject(next);
-    await saveProject(next);
+    try {
+      await saveProject(next);
+    } catch (err) {
+      setProject(previous);
+      throw err;
+    }
   }
 
   async function applyVisualUpdate(action: "suggest" | "apply-suggestion" | "revise" | "from-url", extra?: {
