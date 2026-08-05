@@ -49,6 +49,11 @@ describe("url safety", () => {
     await expect(assertSafePublicUrl("http://[febf::1]")).rejects.toThrow();
   });
 
+  it("blocks deprecated IPv6 site-local range (fec0::/10)", async () => {
+    await expect(assertSafePublicUrl("http://[fec0::1]")).rejects.toThrow();
+    await expect(assertSafePublicUrl("http://[feff::1]")).rejects.toThrow();
+  });
+
   it("blocks alternate IPv4-mapped IPv6 loopback and metadata forms", async () => {
     await expect(assertSafePublicUrl("http://[::ffff:0:7f00:1]")).rejects.toThrow();
     await expect(assertSafePublicUrl("http://[::ffff:0:a9fe:a9fe]")).rejects.toThrow();

@@ -96,6 +96,13 @@ function isLinkLocalHextet(hextet: string): boolean {
   return value >= 0xfe80 && value <= 0xfebf;
 }
 
+function isSiteLocalHextet(hextet: string): boolean {
+  const value = Number.parseInt(hextet, 16);
+  if (!Number.isFinite(value)) return false;
+  // fec0::/10 — deprecated site-local (fec0 through feff)
+  return value >= 0xfec0 && value <= 0xfeff;
+}
+
 function isLinkLocalIpv6(ip: string): boolean {
   const expanded = expandIpv6(ip);
   if (!expanded || expanded.length !== 8) return false;
@@ -106,6 +113,17 @@ function isLinkLocalIpv6(ip: string): boolean {
   const leadingZeros = expanded.findIndex((hextet) => Number.parseInt(hextet, 16) !== 0);
   if (leadingZeros < 0) return false;
   return expanded.slice(leadingZeros).some((hextet) => isLinkLocalHextet(hextet));
+}
+
+function isSiteLocalIpv6(ip: string): boolean {
+  const expanded = expandIpv6(ip);
+  if (!expanded || expanded.length !== 8) return false;
+
+  if (isSiteLocalHextet(expanded[0] ?? "")) return true;
+
+  const leadingZeros = expanded.findIndex((hextet) => Number.parseInt(hextet, 16) !== 0);
+  if (leadingZeros < 0) return false;
+  return expanded.slice(leadingZeros).some((hextet) => isSiteLocalHextet(hextet));
 }
 
 function isPrivateIp(ip: string): boolean {
@@ -126,7 +144,8 @@ function isPrivateIp(ip: string): boolean {
   if (
     normalized.startsWith("fc") ||
     normalized.startsWith("fd") ||
-    isLinkLocalIpv6(normalized)
+    isLinkLocalIpv6(normalized) ||
+    isSiteLocalIpv6(normalized)
   ) {
     return true;
   }
