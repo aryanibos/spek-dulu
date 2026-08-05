@@ -38,6 +38,11 @@ describe("url safety", () => {
     await expect(assertSafePublicUrl("http://[fc00::1]")).rejects.toThrow();
   });
 
+  it("blocks IPv6 unspecified addresses", async () => {
+    await expect(assertSafePublicUrl("http://[::]")).rejects.toThrow();
+    await expect(assertSafePublicUrl("http://[::0]")).rejects.toThrow();
+  });
+
   it("blocks full IPv6 link-local range (fe80::/10)", async () => {
     await expect(assertSafePublicUrl("http://[fe80::1]")).rejects.toThrow();
     await expect(assertSafePublicUrl("http://[fe81::1]")).rejects.toThrow();
