@@ -55,5 +55,17 @@ describe("url safety", () => {
     await expect(
       assertSafePublicUrl("http://[0:0:0:0:0:ffff:127.0.0.1]"),
     ).rejects.toThrow();
+    await expect(
+      assertSafePublicUrl("http://[::ffff:0:ffff:127.0.0.1]"),
+    ).rejects.toThrow();
+  });
+
+  it("blocks compressed IPv6 link-local forms", async () => {
+    await expect(assertSafePublicUrl("http://[::fe80:1]")).rejects.toThrow();
+  });
+
+  it("blocks 6to4 addresses that embed private IPv4", async () => {
+    await expect(assertSafePublicUrl("http://[2002:7f00:0001::]")).rejects.toThrow();
+    await expect(assertSafePublicUrl("http://[2002:ac10:0001::]")).rejects.toThrow();
   });
 });
