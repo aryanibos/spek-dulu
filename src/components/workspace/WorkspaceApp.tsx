@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -64,6 +64,12 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
     "Inspired",
   );
   const [suggestions, setSuggestions] = useState<DesignSuggestion[]>([]);
+  const projectRef = useRef<ProjectBlueprint | null>(null);
+  const saveChainRef = useRef(Promise.resolve());
+
+  useEffect(() => {
+    projectRef.current = project;
+  }, [project]);
 
   useEffect(() => {
     void (async () => {
@@ -110,14 +116,24 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   const activeDoc = project?.documents.find((d) => d.key === activeKey) ?? docs[0];
 
   async function persist(next: ProjectBlueprint) {
-    const previous = project;
+    const previous = projectRef.current;
+    projectRef.current = next;
     setProject(next);
-    try {
-      await saveProject(next);
-    } catch (err) {
-      setProject(previous);
-      throw err;
-    }
+
+    const run = saveChainRef.current.then(async () => {
+      try {
+        await saveProject(next);
+      } catch (err) {
+        if (projectRef.current === next) {
+          projectRef.current = previous;
+          setProject(previous);
+        }
+        throw err;
+      }
+    });
+
+    saveChainRef.current = run.catch(() => {});
+    return run;
   }
 
   async function applyVisualUpdate(action: "suggest" | "apply-suggestion" | "revise" | "from-url", extra?: {
@@ -125,7 +141,8 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
     instruction?: string;
     url?: string;
   }) {
-    if (!project) return;
+    const current = projectRef.current;
+    if (!current) return;
     setBusy(true);
     setError(null);
     try {
@@ -134,7 +151,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action,
-          blueprintJson: JSON.stringify(project),
+          blueprintJson: JSON.stringify(current),
           originalityMode: visualMode,
           presetId: extra?.presetId,
           instruction: extra?.instruction,
@@ -146,11 +163,12 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
 
       if (Array.isArray(data.suggestions)) setSuggestions(data.suggestions);
 
+      const latest = projectRef.current ?? current;
       const next = enrichBlueprint(
         {
-          ...project,
+          ...latest,
           visual: data.visual,
-          referenceUrl: data.url || (action === "from-url" ? extra?.url : project.referenceUrl),
+          referenceUrl: data.url || (action === "from-url" ? extra?.url : latest.referenceUrl),
           updatedAt: new Date().toISOString(),
         },
         {
@@ -167,17 +185,19 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   }
 
   async function runValidate() {
-    if (!project) return;
+    const current = projectRef.current;
+    if (!current) return;
     setBusy(true);
     try {
       const res = await fetch("/api/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blueprintJson: JSON.stringify(project) }),
+        body: JSON.stringify({ blueprintJson: JSON.stringify(current) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Validation failed.");
-      await persist({ ...project, coherence: data, updatedAt: new Date().toISOString() });
+      const latest = projectRef.current ?? current;
+      await persist({ ...latest, coherence: data, updatedAt: new Date().toISOString() });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Validation failed.");
     } finally {
@@ -186,24 +206,26 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   }
 
   async function refineActive() {
-    if (!project || !activeDoc || !chatInput.trim()) return;
+    const current = projectRef.current;
+    if (!current || !activeDoc || !chatInput.trim()) return;
     setBusy(true);
     try {
       const res = await fetch("/api/refine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          projectId: project.id,
+          projectId: current.id,
           fileName: activeDoc.fileName,
           currentContent: activeDoc.content,
           userQuery: chatInput,
-          blueprintJson: JSON.stringify(project),
+          blueprintJson: JSON.stringify(current),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Refine failed.");
 
-      const updatedDocs = project.documents.map((doc) =>
+      const latest = projectRef.current ?? current;
+      const updatedDocs = latest.documents.map((doc) =>
         doc.key === activeDoc.key
           ? {
               ...doc,
@@ -221,11 +243,11 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         createdAt: new Date().toISOString(),
       };
       const next = enrichBlueprint({
-        ...project,
+        ...latest,
         documents: updatedDocs,
-        versions: [version, ...project.versions],
+        versions: [version, ...latest.versions],
         chat: [
-          ...project.chat,
+          ...latest.chat,
           {
             id: createId("msg"),
             role: "user",
@@ -252,15 +274,26 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   }
 
   async function restoreVersion(versionId: string) {
-    if (!project) return;
-    const version = project.versions.find((v) => v.id === versionId);
+    const current = projectRef.current;
+    if (!current) return;
+    const version = current.versions.find((v) => v.id === versionId);
     if (!version) return;
-    const updatedDocs = project.documents.map((doc) =>
-      doc.key === version.documentKey
-        ? { ...doc, content: version.content, updatedAt: new Date().toISOString() }
-        : doc,
-    );
-    await persist(enrichBlueprint({ ...project, documents: updatedDocs }));
+    setBusy(true);
+    try {
+      const updatedDocs = current.documents.map((doc) =>
+        doc.key === version.documentKey
+          ? {
+              ...doc,
+              content: version.content,
+              updatedAt: new Date().toISOString(),
+              isDetailed: false,
+            }
+          : doc,
+      );
+      await persist(enrichBlueprint({ ...current, documents: updatedDocs }));
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (loading) {
@@ -486,6 +519,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
                                 <Button
                                   variant="ghost"
                                   onClick={() => void restoreVersion(version.id)}
+                                  disabled={busy}
                                 >
                                   Restore
                                 </Button>
