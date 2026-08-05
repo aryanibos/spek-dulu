@@ -42,6 +42,32 @@ export function countCommitsToday(
   return countCommitsOnDay(commits, timezone, formatDayKey(now, timezone));
 }
 
+export function getDayStart(timezone: string, now: Date = new Date()): Date {
+  const todayKey = formatDayKey(now, timezone);
+  let lo = now.getTime() - 36 * 60 * 60 * 1000;
+  let hi = now.getTime();
+
+  while (hi - lo > 1_000) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (formatDayKey(new Date(mid), timezone) === todayKey) {
+      hi = mid;
+    } else {
+      lo = mid;
+    }
+  }
+
+  return new Date(hi);
+}
+
+export function findBackdatedCommits(
+  commits: CommitTimestamp[],
+  timezone: string,
+  now: Date = new Date(),
+): CommitTimestamp[] {
+  const dayStart = getDayStart(timezone, now);
+  return commits.filter((commit) => commit.committedAt < dayStart);
+}
+
 export function getNextMorningReset(
   timezone: string,
   now: Date = new Date(),

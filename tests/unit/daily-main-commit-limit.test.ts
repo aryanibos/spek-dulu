@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   countCommitsToday,
   evaluateDailyMainCommitLimit,
+  findBackdatedCommits,
   formatDayKey,
+  getDayStart,
   getNextMorningReset,
   isDailyMainCommitQuotaExhausted,
 } from "@/lib/git/daily-main-commit-limit";
@@ -114,5 +116,17 @@ describe("daily main commit limit", () => {
         new Date("2026-08-01T12:00:00.000Z"),
       ),
     ).toBe(1);
+  });
+
+  it("detects commits backdated before the local day start", () => {
+    const now = new Date("2026-08-01T12:00:00.000Z");
+    const dayStart = getDayStart("Asia/Jakarta", now);
+    const commits = [
+      { committedAt: new Date(dayStart.getTime() - 60_000) },
+      { committedAt: new Date(dayStart.getTime() + 60_000) },
+    ];
+
+    expect(findBackdatedCommits(commits, "Asia/Jakarta", now)).toHaveLength(1);
+    expect(formatDayKey(dayStart, "Asia/Jakarta")).toBe("2026-08-01");
   });
 });

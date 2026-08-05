@@ -5,6 +5,7 @@ import {
   DEFAULT_COMMIT_LIMIT_TIMEZONE,
   DEFAULT_MAIN_DAILY_COMMIT_LIMIT,
   evaluateDailyMainCommitLimit,
+  findBackdatedCommits,
   isDailyMainCommitQuotaExhausted,
   type CommitTimestamp,
 } from "../src/lib/git/daily-main-commit-limit.ts";
@@ -74,7 +75,15 @@ function readPendingMainCommits(timezone: string) {
       !pushBase || pushBase === ZERO_SHA
         ? readCommitTimestamps(pushTip)
         : readCommitTimestampsInRange(pushBase, pushTip);
-    return countCommitsToday(commits, timezone);
+
+    const backdated = findBackdatedCommits(commits, timezone);
+    if (backdated.length > 0) {
+      throw new Error(
+        `Backdated committer dates are not allowed (${backdated.length} commit(s) before today in ${timezone}).`,
+      );
+    }
+
+    return commits.length;
   }
 
   const raw = process.env.PENDING_MAIN_COMMITS ?? "0";
