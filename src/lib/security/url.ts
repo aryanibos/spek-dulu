@@ -5,26 +5,58 @@ const BLOCKED_HOSTS = new Set(["localhost", "metadata.google.internal"]);
 const MAX_HTML_BYTES = 120_000;
 const MAX_REDIRECTS = 5;
 
-function normalizeIp(ip: string): string {
-  const stripped = ip.replace(/^\[|\]$/g, "");
+function decodeIpv4MappedHextets(hiHex: string, loHex: string): string {
+  const hi = Number.parseInt(hiHex, 16);
+  const lo = Number.parseInt(loHex, 16);
+  return `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+}
+
+function expandIpv6(ip: string): string[] | null {
+  const stripped = ip.replace(/^\[|\]$/g, "").toLowerCase();
+  if (!stripped.includes(":")) return null;
+
+  const parts = stripped.split("::");
+  if (parts.length > 2) return null;
+
+  const head = parts[0] ? parts[0].split(":").filter(Boolean) : [];
+  const tail = parts[1] ? parts[1].split(":").filter(Boolean) : [];
+  const missing = 8 - head.length - tail.length;
+  if (missing < 0) return null;
+
+  return [...head, ...Array(missing).fill("0"), ...tail];
+}
+
+function extractIpv4Mapped(ip: string): string | null {
+  const stripped = ip.replace(/^\[|\]$/g, "").toLowerCase();
+
   const dottedMapped = stripped.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
   if (dottedMapped) return dottedMapped[1];
 
   const hexMapped = stripped.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
-  if (hexMapped) {
-    const hi = parseInt(hexMapped[1], 16);
-    const lo = parseInt(hexMapped[2], 16);
-    return `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
-  }
+  if (hexMapped) return decodeIpv4MappedHextets(hexMapped[1], hexMapped[2]);
 
-  return stripped;
+  const zeroMapped = stripped.match(/^::ffff:0:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+  if (zeroMapped) return decodeIpv4MappedHextets(zeroMapped[1], zeroMapped[2]);
+
+  const expanded = expandIpv6(stripped);
+  if (!expanded || expanded.length !== 8) return null;
+
+  const prefixZero = expanded.slice(0, 5).every((hextet) => Number.parseInt(hextet, 16) === 0);
+  if (!prefixZero || Number.parseInt(expanded[5] ?? "", 16) !== 0xffff) return null;
+
+  return decodeIpv4MappedHextets(expanded[6] ?? "", expanded[7] ?? "");
+}
+
+function normalizeIp(ip: string): string {
+  const mapped = extractIpv4Mapped(ip);
+  if (mapped) return mapped;
+  return ip.replace(/^\[|\]$/g, "").toLowerCase();
 }
 
 function isLinkLocalIpv6(ip: string): boolean {
-  if (!ip.includes(":")) return false;
-  const firstHextet = ip.split(":")[0];
-  if (!firstHextet) return false;
-  const value = Number.parseInt(firstHextet, 16);
+  const expanded = expandIpv6(ip);
+  if (!expanded || expanded.length === 0) return false;
+  const value = Number.parseInt(expanded[0] ?? "", 16);
   if (!Number.isFinite(value)) return false;
   // fe80::/10 — link-local (fe80 through febf)
   return value >= 0xfe80 && value <= 0xfebf;
