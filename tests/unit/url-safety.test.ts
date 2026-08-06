@@ -79,4 +79,10 @@ describe("url safety", () => {
     await expect(assertSafePublicUrl("http://[64:ff9b::7f00:1]")).rejects.toThrow();
     await expect(assertSafePublicUrl("http://[64:ff9b::a9fe:a9fe]")).rejects.toThrow();
   });
+
+  it("blocks decimal and hex loopback encodings", async () => {
+    await expect(assertSafePublicUrl("http://2130706433")).rejects.toThrow();
+    await expect(assertSafePublicUrl("http://0x7f000001")).rejects.toThrow();
+    await expect(assertSafePublicUrl("http://127.1")).rejects.toThrow();
+  });
 });

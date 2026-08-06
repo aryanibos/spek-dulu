@@ -6,10 +6,22 @@ import {
   blueprintRequestSchema,
   interviewRequestSchema,
   refineRequestSchema,
+  visualDesignRequestSchema,
 } from "@/lib/schema";
 import { blendHintsIntoVisual } from "@/lib/visual/analyze-url";
 
 describe("schema payload limits", () => {
+  it("rejects unknown refine fileName values", () => {
+    const result = refineRequestSchema.safeParse({
+      projectId: "project_test",
+      fileName: "../../../etc/passwd",
+      currentContent: "content",
+      userQuery: "Tighten scope",
+      blueprintJson: "{}",
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects oversized refine currentContent", () => {
     const result = refineRequestSchema.safeParse({
       projectId: "project_test",
@@ -45,6 +57,14 @@ describe("schema payload limits", () => {
       idea: "A simple todo app for students",
       answers: { user: "Student" },
       screenshotBase64: "a".repeat(30),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("requires url for visual design from-url action", () => {
+    const result = visualDesignRequestSchema.safeParse({
+      action: "from-url",
+      blueprintJson: "{}",
     });
     expect(result.success).toBe(false);
   });

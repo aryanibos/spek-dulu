@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { originalityModeSchema } from "./blueprint";
+import { documentFileNameSchema, originalityModeSchema } from "./blueprint";
 import {
   ALLOWED_SCREENSHOT_MIME,
   boundedRecordSchema,
@@ -46,7 +46,7 @@ export const blueprintRequestSchema = z
 
 export const refineRequestSchema = z.object({
   projectId: z.string(),
-  fileName: z.string(),
+  fileName: documentFileNameSchema,
   currentContent: z.string().max(120_000),
   userQuery: z.string().min(3).max(2000),
   blueprintJson: z.string().max(500_000),
@@ -76,13 +76,23 @@ export const analyzeUrlRequestSchema = z.object({
   productContext: z.string().max(2000).optional(),
 });
 
-export const visualDesignRequestSchema = z.object({
-  action: z.enum(["suggest", "apply-suggestion", "revise", "from-url"]),
-  blueprintJson: z.string().min(2).max(500_000),
-  originalityMode: originalityModeSchema.optional(),
-  presetId: z.string().optional(),
-  instruction: z.string().min(3).max(2000).optional(),
-  url: z.string().url().optional(),
-});
+export const visualDesignRequestSchema = z
+  .object({
+    action: z.enum(["suggest", "apply-suggestion", "revise", "from-url"]),
+    blueprintJson: z.string().min(2).max(500_000),
+    originalityMode: originalityModeSchema.optional(),
+    presetId: z.string().optional(),
+    instruction: z.string().min(3).max(2000).optional(),
+    url: z.string().url().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.action === "from-url" && !data.url) {
+      ctx.addIssue({
+        code: "custom",
+        message: "url is required when action is from-url",
+        path: ["url"],
+      });
+    }
+  });
 
 export type InterviewQuestion = z.infer<typeof interviewQuestionSchema>;

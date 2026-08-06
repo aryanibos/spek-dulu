@@ -1,9 +1,10 @@
 import { lookup } from "node:dns/promises";
 import net from "node:net";
+import { Agent, fetch as undiciFetch } from "undici";
 
 const BLOCKED_HOSTS = new Set(["localhost", "metadata.google.internal"]);
-const MAX_HTML_BYTES = 120_000;
-const MAX_REDIRECTS = 5;
+export const MAX_HTML_BYTES = 120_000;
+export const MAX_REDIRECTS = 5;
 
 function decodeIpv4MappedHextets(hiHex: string, loHex: string): string {
   const hi = Number.parseInt(hiHex, 16);
@@ -174,7 +175,7 @@ function isPrivateIp(ip: string): boolean {
   return false;
 }
 
-export async function assertSafePublicUrl(raw: string): Promise<URL> {
+function parsePublicUrl(raw: string): URL {
   let url: URL;
   try {
     url = new URL(raw);
@@ -197,17 +198,71 @@ export async function assertSafePublicUrl(raw: string): Promise<URL> {
     throw new Error("Private IP addresses are blocked.");
   }
 
+  return url;
+}
+
+export async function resolveSafePublicAddress(hostname: string): Promise<string> {
+  const stripped = hostname.replace(/^\[|\]$/g, "");
+  if (net.isIP(stripped)) {
+    if (isPrivateIp(stripped)) {
+      throw new Error("Private IP addresses are blocked.");
+    }
+    return stripped;
+  }
+
   try {
-    const records = await lookup(hostname, { all: true });
+    const records = await lookup(stripped, { all: true });
     if (records.some((record) => isPrivateIp(record.address))) {
       throw new Error("URL resolves to a private network address.");
     }
+    const firstPublic = records.find((record) => !isPrivateIp(record.address));
+    if (!firstPublic) {
+      throw new Error("URL resolves to a private network address.");
+    }
+    return firstPublic.address;
   } catch (error) {
     if (error instanceof Error && error.message.includes("private")) throw error;
     throw new Error("Unable to resolve host safely.");
   }
+}
 
+export async function assertSafePublicUrl(raw: string): Promise<URL> {
+  const url = parsePublicUrl(raw);
+  await resolveSafePublicAddress(url.hostname);
   return url;
+}
+
+async function fetchPinnedUrl(
+  url: URL,
+  pinnedAddress: string,
+  signal: AbortSignal,
+) {
+  const hostname = url.hostname.replace(/^\[|\]$/g, "");
+  const isHttps = url.protocol === "https:";
+  const port = url.port ? Number(url.port) : isHttps ? 443 : 80;
+  const connectHost =
+    net.isIP(pinnedAddress) === 6 ? `[${pinnedAddress}]` : pinnedAddress;
+
+  const agent = new Agent({
+    connect: {
+      host: connectHost,
+      port,
+      servername: hostname,
+    },
+  });
+
+  try {
+    return await undiciFetch(url.toString(), {
+      redirect: "manual",
+      signal,
+      dispatcher: agent,
+      headers: {
+        "User-Agent": "SpekDuluBot/1.0 (+https://spekdulu.local)",
+      },
+    });
+  } finally {
+    await agent.close();
+  }
 }
 
 export async function fetchSafePublicHtml(raw: string): Promise<string> {
@@ -215,16 +270,11 @@ export async function fetchSafePublicHtml(raw: string): Promise<string> {
 
   for (let hop = 0; ; hop++) {
     url = await assertSafePublicUrl(url.toString());
+    const pinnedAddress = await resolveSafePublicAddress(url.hostname);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
     try {
-      const response = await fetch(url.toString(), {
-        redirect: "manual",
-        signal: controller.signal,
-        headers: {
-          "User-Agent": "SpekDuluBot/1.0 (+https://spekdulu.local)",
-        },
-      });
+      const response = await fetchPinnedUrl(url, pinnedAddress, controller.signal);
 
       if (response.status >= 300 && response.status < 400) {
         if (hop >= MAX_REDIRECTS) {
@@ -238,6 +288,7 @@ export async function fetchSafePublicHtml(raw: string): Promise<string> {
       }
 
       if (!response.ok) {
+        await response.body?.cancel();
         throw new Error(`Upstream responded with ${response.status}.`);
       }
 
@@ -253,7 +304,7 @@ export async function fetchSafePublicHtml(raw: string): Promise<string> {
         bytes += value.byteLength;
         if (bytes > MAX_HTML_BYTES) {
           await reader.cancel();
-          break;
+          throw new Error("Response body exceeds limit.");
         }
         result += decoder.decode(value, { stream: true });
       }

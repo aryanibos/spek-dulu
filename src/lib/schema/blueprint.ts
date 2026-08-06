@@ -103,6 +103,20 @@ export const documentKeySchema = z.enum([
 
 export type DocumentKey = z.infer<typeof documentKeySchema>;
 
+export const documentFileNameSchema = z.enum([
+  "01_PRD.md",
+  "02_DESIGN_SYSTEM.md",
+  "03_INFORMATION_ARCHITECTURE.md",
+  "04_COMPONENT_LIBRARY.md",
+  "05_FRONTEND_ARCHITECTURE.md",
+  "06_BACKEND_ARCHITECTURE.md",
+  "07_DATABASE_SCHEMA.md",
+  "08_SEO_ACCESSIBILITY.md",
+  "09_IMPLEMENTATION_ROADMAP.md",
+  "10_DESIGN_ADAPTATION_GUIDE.md",
+  "11_MASTER_BUILD_PROMPT.md",
+]);
+
 export const specDocumentSchema = z.object({
   key: documentKeySchema,
   fileName: z.string(),
