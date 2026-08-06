@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -67,55 +67,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   const projectRef = useRef<ProjectBlueprint | null>(null);
   const saveChainRef = useRef(Promise.resolve());
 
-  useEffect(() => {
-    projectRef.current = project;
-  }, [project]);
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const saved = await getProject(projectId);
-        if (!saved) {
-          setError("Project not found in local storage. Generate it again from the home wizard.");
-          setLoading(false);
-          return;
-        }
-        const needsEnrich =
-          !saved.documents.length || !saved.artifacts?.length;
-        const enriched = needsEnrich ? enrichBlueprint(saved) : saved;
-        setProject(enriched);
-        setVisualMode(enriched.visual?.originalityMode ?? "Inspired");
-        setVisualUrl(enriched.referenceUrl ?? "");
-        if (needsEnrich) await saveProject(enriched);
-        try {
-          setSuggestions(await fetchDesignSuggestions(enriched));
-        } catch {
-          // Non-blocking: workspace still works without suggestion cards.
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load project.");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [projectId]);
-
-  const docs = useMemo(() => {
-    if (!project) return [];
-    return project.documents.filter((doc) => {
-      const q = query.trim().toLowerCase();
-      if (!q) return true;
-      return (
-        doc.title.toLowerCase().includes(q) ||
-        doc.fileName.toLowerCase().includes(q) ||
-        doc.content.toLowerCase().includes(q)
-      );
-    });
-  }, [project, query]);
-
-  const activeDoc = project?.documents.find((d) => d.key === activeKey) ?? docs[0];
-
-  async function persist(next: ProjectBlueprint) {
+  const persist = useCallback(async (next: ProjectBlueprint) => {
     const previous = projectRef.current;
     projectRef.current = next;
     setProject(next);
@@ -134,7 +86,58 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
 
     saveChainRef.current = run.catch(() => {});
     return run;
-  }
+  }, []);
+
+  useEffect(() => {
+    projectRef.current = project;
+  }, [project]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const saved = await getProject(projectId);
+        if (!saved) {
+          setError("Project not found in local storage. Generate it again from the home wizard.");
+          setLoading(false);
+          return;
+        }
+        const needsEnrich =
+          !saved.documents.length || !saved.artifacts?.length;
+        const enriched = needsEnrich ? enrichBlueprint(saved) : saved;
+        setVisualMode(enriched.visual?.originalityMode ?? "Inspired");
+        setVisualUrl(enriched.referenceUrl ?? "");
+        if (needsEnrich) {
+          await persist(enriched);
+        } else {
+          setProject(enriched);
+        }
+        try {
+          setSuggestions(await fetchDesignSuggestions(enriched));
+        } catch {
+          // Non-blocking: workspace still works without suggestion cards.
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load project.");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [persist, projectId]);
+
+  const docs = useMemo(() => {
+    if (!project) return [];
+    return project.documents.filter((doc) => {
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        doc.title.toLowerCase().includes(q) ||
+        doc.fileName.toLowerCase().includes(q) ||
+        doc.content.toLowerCase().includes(q)
+      );
+    });
+  }, [project, query]);
+
+  const activeDoc = project?.documents.find((d) => d.key === activeKey) ?? docs[0];
 
   async function applyVisualUpdate(action: "suggest" | "apply-suggestion" | "revise" | "from-url", extra?: {
     presetId?: string;
