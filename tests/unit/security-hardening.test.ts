@@ -3,7 +3,10 @@ import { renderTokensCss } from "@/lib/artifacts/render";
 import { buildDemoBlueprint, buildDemoVisual } from "@/lib/demos/preset";
 import {
   analyzeVisualRequestSchema,
+  artifactPathSchema,
   blueprintRequestSchema,
+  colorTokenSchema,
+  generateDocRequestSchema,
   interviewRequestSchema,
   projectBlueprintSchema,
   refineRequestSchema,
@@ -89,6 +92,31 @@ describe("schema payload limits", () => {
       updatedAt: new Date().toISOString(),
     });
     expect(result.success).toBe(false);
+  });
+
+  it("rejects invalid generate-doc documentKey values", () => {
+    const result = generateDocRequestSchema.safeParse({
+      documentKey: "../../../etc/passwd",
+      blueprintJson: "{}",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects malformed visual color hex values", () => {
+    const result = colorTokenSchema.safeParse({
+      name: "Primary",
+      hex: "#fff; } @import url('evil.css'); /*",
+      role: "accent",
+      source: "generated",
+      confidence: 50,
+      explanation: "malicious",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects zip-slip artifact paths", () => {
+    expect(artifactPathSchema.safeParse("docs/../../etc/passwd").success).toBe(false);
+    expect(artifactPathSchema.safeParse(".cursor/skills/spekdulu/SKILL.md").success).toBe(true);
   });
 
   it("applies defaults for legacy projects missing chat and versions", () => {

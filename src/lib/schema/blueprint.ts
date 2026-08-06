@@ -57,7 +57,7 @@ export const scopeAssessmentSchema = z.object({
 
 export const colorTokenSchema = z.object({
   name: z.string(),
-  hex: z.string(),
+  hex: z.string().regex(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, "hex must be #RGB or #RRGGBB"),
   role: z.enum(["surface", "accent", "text", "border", "alert"]),
   source: z.enum(["observed", "inferred", "generated"]),
   confidence: z.number().min(0).max(100),
@@ -78,9 +78,9 @@ export const visualSpecSchema = z.object({
   typography: z.array(typographyTokenSchema),
   spacingScale: z.array(z.string()),
   radii: z.object({
-    button: z.string(),
-    card: z.string(),
-    modal: z.string(),
+    button: z.string().regex(/^\d+px$/, "radius must be a pixel value like 12px"),
+    card: z.string().regex(/^\d+px$/, "radius must be a pixel value like 12px"),
+    modal: z.string().regex(/^\d+px$/, "radius must be a pixel value like 12px"),
   }),
   components: z.array(z.string()),
   sections: z.array(z.string()),
@@ -126,8 +126,16 @@ export const specDocumentSchema = z.object({
   updatedAt: z.string(),
 });
 
+export const artifactPathSchema = z
+  .string()
+  .min(1)
+  .refine(
+    (path) => !path.includes("..") && !path.startsWith("/") && !path.includes("\\"),
+    "artifact path must be relative and must not traverse directories",
+  );
+
 export const artifactSchema = z.object({
-  path: z.string(),
+  path: artifactPathSchema,
   content: z.string(),
 });
 

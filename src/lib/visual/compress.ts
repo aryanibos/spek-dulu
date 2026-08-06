@@ -6,9 +6,6 @@ export async function compressImageFile(
   if (!file.type.startsWith("image/")) {
     throw new Error("Only image uploads are supported.");
   }
-  if (file.size > 4_000_000) {
-    // still try compression, but reject absurd originals early
-  }
   if (file.size > 12_000_000) {
     throw new Error("Image is too large. Please use a file under 12MB.");
   }
@@ -25,6 +22,12 @@ export async function compressImageFile(
   ctx.drawImage(bitmap, 0, 0, width, height);
   const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg";
   const dataUrl = canvas.toDataURL(mimeType, quality);
+  const base64Length = dataUrl.replace(/^data:[^;]+;base64,/, "").length;
+  if (base64Length > 4_000_000) {
+    throw new Error(
+      "Image is still too large after compression. Use a smaller or simpler image.",
+    );
+  }
   return { dataUrl, mimeType, width, height };
 }
 

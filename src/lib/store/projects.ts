@@ -26,8 +26,9 @@ function getDb() {
 }
 
 export async function saveProject(project: ProjectBlueprint) {
+  const validated = projectBlueprintSchema.parse(project);
   const db = await getDb();
-  await db.put("projects", { ...project, updatedAt: new Date().toISOString() });
+  await db.put("projects", { ...validated, updatedAt: new Date().toISOString() });
 }
 
 export async function getProject(id: string) {
@@ -40,7 +41,11 @@ export async function getProject(id: string) {
 export async function listProjects() {
   const db = await getDb();
   const all = await db.getAll("projects");
-  return all.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const projects = all.flatMap((raw) => {
+    const parsed = projectBlueprintSchema.safeParse(raw);
+    return parsed.success ? [parsed.data] : [];
+  });
+  return projects.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 export async function deleteProject(id: string) {

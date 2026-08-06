@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { documentFileNameSchema, originalityModeSchema } from "./blueprint";
+import { documentFileNameSchema, documentKeySchema, originalityModeSchema } from "./blueprint";
 import {
   ALLOWED_SCREENSHOT_MIME,
   boundedRecordSchema,
@@ -53,7 +53,7 @@ export const refineRequestSchema = z.object({
 });
 
 export const generateDocRequestSchema = z.object({
-  documentKey: z.string(),
+  documentKey: documentKeySchema,
   blueprintJson: z.string().max(500_000),
 });
 

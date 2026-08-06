@@ -1,12 +1,18 @@
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import type { ProjectBlueprint } from "@/lib/schema";
+import { artifactPathSchema } from "@/lib/schema";
 import { buildArtifacts } from "./render";
+
+function assertSafeZipPath(path: string) {
+  artifactPathSchema.parse(path);
+}
 
 export async function downloadBlueprintZip(bp: ProjectBlueprint) {
   const zip = new JSZip();
   const artifacts = buildArtifacts(bp);
   for (const artifact of artifacts) {
+    assertSafeZipPath(artifact.path);
     zip.file(artifact.path, artifact.content);
   }
   zip.file(
