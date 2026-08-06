@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+export const MAX_DOC_CONTENT = 120_000;
 export const ALLOWED_SCREENSHOT_MIME = /^image\/(png|jpe?g|webp)$/i;
 
 export const boundedRecordSchema = z

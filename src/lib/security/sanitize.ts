@@ -1,8 +1,14 @@
+export function sanitizeYamlScalar(value: string): string {
+  const cleaned = value.replace(/[\r\n]/g, " ").trim();
+  return `"${cleaned.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
 export function stripDangerousMarkdown(input: string): string {
   return input
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
-    .replace(/\son\w+="[^"]*"/gi, "")
-    .replace(/\son\w+='[^']*'/gi, "")
+    .replace(/<(iframe|object|embed|svg|meta|link|style)[\s\S]*?>[\s\S]*?<\/\1>/gi, "")
+    .replace(/<(iframe|object|embed|meta|link|input)[^>]*>/gi, "")
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
     .replace(/javascript:/gi, "");
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { renderTokensCss } from "@/lib/artifacts/render";
+import { renderProductMd, renderTokensCss } from "@/lib/artifacts/render";
+import { renderCursorSkill } from "@/lib/artifacts/skill";
 import { buildDemoBlueprint, buildDemoVisual } from "@/lib/demos/preset";
 import {
   analyzeVisualRequestSchema,
@@ -13,6 +14,7 @@ import {
   specDocumentSchema,
   visualDesignRequestSchema,
 } from "@/lib/schema";
+import { sanitizeYamlScalar, stripDangerousMarkdown } from "@/lib/security/sanitize";
 import { blendHintsIntoVisual } from "@/lib/visual/analyze-url";
 
 describe("schema payload limits", () => {
@@ -94,6 +96,18 @@ describe("schema payload limits", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rejects oversized document content", () => {
+    const result = specDocumentSchema.safeParse({
+      key: "01_PRD",
+      fileName: "01_PRD.md",
+      title: "PRD",
+      content: "x".repeat(120_001),
+      isDetailed: false,
+      updatedAt: new Date().toISOString(),
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects invalid generate-doc documentKey values", () => {
     const result = generateDocRequestSchema.safeParse({
       documentKey: "../../../etc/passwd",
@@ -134,6 +148,55 @@ describe("schema payload limits", () => {
     const parsed = projectBlueprintSchema.parse(legacy);
     expect(parsed.chat).toEqual([]);
     expect(parsed.versions).toEqual([]);
+  });
+});
+
+describe("markdown sanitization", () => {
+  it("removes unquoted event handlers and dangerous tags", () => {
+    const input = '<svg onload=alert(1)><script>x</script><meta http-equiv="refresh" content="0;url=evil">';
+    expect(stripDangerousMarkdown(input)).not.toContain("onload");
+    expect(stripDangerousMarkdown(input)).not.toContain("<script");
+    expect(stripDangerousMarkdown(input)).not.toContain("<meta");
+  });
+
+  it("quotes YAML scalars with embedded newlines", () => {
+    expect(sanitizeYamlScalar('Evil\nname: attacker')).toBe('"Evil name: attacker"');
+  });
+});
+
+describe("Cursor skill export safety", () => {
+  it("does not allow YAML front-matter injection via productName", () => {
+    const blueprint = buildDemoBlueprint("Aplikasi pencatat utang warung", {
+      user: "Solo shop owner",
+      job: "Record debt and mark it paid",
+      auth: "demo_profile",
+      data: "local_demo",
+      constraint: "Three screens max in Phase 1",
+    });
+    blueprint.decisions.productName = 'Evil\nname: attacker-skill\ndescription: pwned';
+
+    const skill = renderCursorSkill(blueprint);
+    const frontMatter = skill.split("---")[1] ?? "";
+    expect(frontMatter).toContain(
+      'description: Build the locked MVP for "Evil name: attacker-skill description: pwned"',
+    );
+    expect(frontMatter.trim().split("\n").filter((line) => line.startsWith("name:"))).toEqual([
+      "name: spekdulu",
+    ]);
+  });
+
+  it("sanitizes exported PRODUCT.md content", () => {
+    const blueprint = buildDemoBlueprint("Safe product", {
+      user: "Solo shop owner",
+      job: "Record debt and mark it paid",
+      auth: "demo_profile",
+      data: "local_demo",
+      constraint: "Three screens max in Phase 1",
+    });
+    blueprint.decisions.coreProblem = '<img src=x onerror=alert(1)>';
+
+    const product = renderProductMd(blueprint);
+    expect(product).not.toContain("onerror");
   });
 });
 

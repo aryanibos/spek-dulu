@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_DOC_CONTENT } from "./limits";
 
 export const originalityModeSchema = z.enum(["Reference", "Inspired", "Distinct"]);
 export type OriginalityMode = z.infer<typeof originalityModeSchema>;
@@ -121,7 +122,7 @@ export const specDocumentSchema = z.object({
   key: documentKeySchema,
   fileName: documentFileNameSchema,
   title: z.string(),
-  content: z.string(),
+  content: z.string().max(MAX_DOC_CONTENT),
   isDetailed: z.boolean(),
   updatedAt: z.string(),
 });

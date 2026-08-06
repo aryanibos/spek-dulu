@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAiProvider } from "@/lib/ai";
+import { MAX_DOC_CONTENT } from "@/lib/schema/limits";
 import { projectBlueprintSchema, refineRequestSchema } from "@/lib/schema";
 import { stripDangerousMarkdown } from "@/lib/security/sanitize";
 import { createId } from "@/lib/utils";
@@ -18,9 +19,13 @@ export async function POST(request: Request) {
       userQuery: body.userQuery,
       blueprint,
     });
+    const updatedContent = stripDangerousMarkdown(result.updatedContent);
+    if (updatedContent.length > MAX_DOC_CONTENT) {
+      throw new Error(`Refined content exceeds ${MAX_DOC_CONTENT} characters.`);
+    }
     return NextResponse.json({
       ...result,
-      updatedContent: stripDangerousMarkdown(result.updatedContent),
+      updatedContent,
       versionId: createId("ver"),
     });
   } catch (error) {

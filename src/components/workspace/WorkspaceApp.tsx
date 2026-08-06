@@ -289,7 +289,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
               ...doc,
               content: version.content,
               updatedAt: new Date().toISOString(),
-              isDetailed: false,
+              isDetailed: true,
             }
           : doc,
       );

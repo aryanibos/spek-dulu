@@ -1,5 +1,6 @@
 import type { DocumentKey, ProjectBlueprint } from "@/lib/schema";
 import { validateBlueprint } from "@/lib/coherence/validate";
+import { stripDangerousMarkdown } from "@/lib/security/sanitize";
 import { renderAllDocuments } from "./documents";
 import { renderCursorSkill } from "./skill";
 
@@ -47,7 +48,7 @@ export function renderTokensCss(bp: ProjectBlueprint): string {
 
 export function renderProductMd(bp: ProjectBlueprint): string {
   const d = bp.decisions;
-  return `# ${d.productName}
+  return stripDangerousMarkdown(`# ${d.productName}
 
 ## One-liner
 ${d.oneLiner}
@@ -86,7 +87,7 @@ ${bp.acceptanceCriteria.map((a) => `- [ ] ${a.text}`).join("\n")}
 ${d.risks.map((r) => `- ${r}`).join("\n")}
 
 > Full PRD details live in \`docs/01_PRD.md\`.
-`;
+`);
 }
 
 export function renderDesignMd(bp: ProjectBlueprint): string {
@@ -95,7 +96,7 @@ export function renderDesignMd(bp: ProjectBlueprint): string {
 }
 
 export function renderImplementationMd(bp: ProjectBlueprint): string {
-  return `# Implementation Plan
+  return stripDangerousMarkdown(`# Implementation Plan
 
 ## Phase 1
 ${bp.acceptanceCriteria.map((a) => `1. ${a.text}`).join("\n")}
@@ -110,11 +111,11 @@ ${bp.entities.map((e) => `- ${e.name}: ${e.fields.join(", ")}`).join("\n")}
 - Auth required: ${bp.decisions.mustHaveAuth ? "yes" : "no"}
 - Data mode: ${bp.decisions.dataMode}
 - Scope label: ${bp.scope.label}
-`;
+`);
 }
 
 export function renderTasksMd(bp: ProjectBlueprint): string {
-  return `# Tasks
+  return stripDangerousMarkdown(`# Tasks
 
 ## Now
 ${bp.features
@@ -133,7 +134,7 @@ ${bp.features
   .filter((f) => f.bucket === "do_not_build")
   .map((f) => `- [ ] ${f.name} (${f.reason})`)
   .join("\n")}
-`;
+`);
 }
 
 export function buildArtifacts(bp: ProjectBlueprint): Artifact[] {

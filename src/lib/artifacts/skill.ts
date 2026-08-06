@@ -1,11 +1,12 @@
 import type { ProjectBlueprint } from "@/lib/schema";
-import { stripDangerousMarkdown } from "@/lib/security/sanitize";
+import { sanitizeYamlScalar, stripDangerousMarkdown } from "@/lib/security/sanitize";
 
 export function renderCursorSkill(bp: ProjectBlueprint): string {
   const d = bp.decisions;
+  const productName = sanitizeYamlScalar(d.productName);
   const content = `---
 name: spekdulu
-description: Build the locked MVP for ${d.productName} using SpekDulu decisions, tokens, and Phase 1 acceptance criteria. Use when implementing this product or asking what to build next.
+description: Build the locked MVP for ${productName} using SpekDulu decisions, tokens, and Phase 1 acceptance criteria. Use when implementing this product or asking what to build next.
 ---
 
 # SpekDulu Skill for ${d.productName}
