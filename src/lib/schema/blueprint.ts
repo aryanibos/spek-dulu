@@ -119,7 +119,7 @@ export const documentFileNameSchema = z.enum([
 
 export const specDocumentSchema = z.object({
   key: documentKeySchema,
-  fileName: z.string(),
+  fileName: documentFileNameSchema,
   title: z.string(),
   content: z.string(),
   isDetailed: z.boolean(),

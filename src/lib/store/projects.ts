@@ -1,7 +1,7 @@
 "use client";
 
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { ProjectBlueprint } from "@/lib/schema";
+import { projectBlueprintSchema, type ProjectBlueprint } from "@/lib/schema";
 
 interface SpekDuluDb extends DBSchema {
   projects: {
@@ -32,7 +32,9 @@ export async function saveProject(project: ProjectBlueprint) {
 
 export async function getProject(id: string) {
   const db = await getDb();
-  return db.get("projects", id);
+  const raw = await db.get("projects", id);
+  if (!raw) return undefined;
+  return projectBlueprintSchema.parse(raw);
 }
 
 export async function listProjects() {

@@ -1,4 +1,3 @@
-import { getAiProvider } from "@/lib/ai";
 import { buildDemoVisual } from "@/lib/demos/preset";
 import type { OriginalityMode, ProjectBlueprint, VisualSpec } from "@/lib/schema";
 import { assertSafePublicUrl, fetchSafePublicHtml } from "@/lib/security/url";
@@ -83,24 +82,10 @@ export async function analyzeReferenceUrl(input: {
   const safeUrl = await assertSafePublicUrl(input.url);
   const html = await fetchSafePublicHtml(safeUrl.toString());
   const hints = extractCssHints(html);
-  const provider = getAiProvider();
-
-  const visual =
-    provider.name === "gemini"
-      ? await provider.analyzeVisual({
-          originalityMode: input.originalityMode,
-          screenshotBase64:
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
-          screenshotMimeType: "image/png",
-          productContext: `Reference URL ${safeUrl.toString()}. Observed CSS color hints: ${hints.join(", ")}. Product: ${input.productContext ?? ""}`,
-        })
-      : blendHintsIntoVisual(
-          input.blueprint
-            ? suggestVisualForApp(input.blueprint, input.originalityMode)
-            : buildDemoVisual(input.originalityMode),
-          hints,
-          safeUrl.hostname,
-        );
+  const baseVisual = input.blueprint
+    ? suggestVisualForApp(input.blueprint, input.originalityMode)
+    : buildDemoVisual(input.originalityMode);
+  const visual = blendHintsIntoVisual(baseVisual, hints, safeUrl.hostname);
 
   return {
     url: safeUrl.toString(),

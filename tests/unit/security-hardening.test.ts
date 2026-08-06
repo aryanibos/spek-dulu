@@ -5,7 +5,9 @@ import {
   analyzeVisualRequestSchema,
   blueprintRequestSchema,
   interviewRequestSchema,
+  projectBlueprintSchema,
   refineRequestSchema,
+  specDocumentSchema,
   visualDesignRequestSchema,
 } from "@/lib/schema";
 import { blendHintsIntoVisual } from "@/lib/visual/analyze-url";
@@ -75,6 +77,35 @@ describe("schema payload limits", () => {
       screenshotMimeType: "image/svg+xml",
     });
     expect(result.success).toBe(false);
+  });
+
+  it("rejects path traversal document fileName values", () => {
+    const result = specDocumentSchema.safeParse({
+      key: "01_PRD",
+      fileName: "../../evil.md",
+      title: "PRD",
+      content: "content",
+      isDetailed: false,
+      updatedAt: new Date().toISOString(),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("applies defaults for legacy projects missing chat and versions", () => {
+    const blueprint = buildDemoBlueprint("Aplikasi pencatat utang warung", {
+      user: "Solo shop owner",
+      job: "Record debt and mark it paid",
+      auth: "demo_profile",
+      data: "local_demo",
+      constraint: "Three screens max in Phase 1",
+    });
+    const legacy = { ...blueprint } as Record<string, unknown>;
+    delete legacy.chat;
+    delete legacy.versions;
+
+    const parsed = projectBlueprintSchema.parse(legacy);
+    expect(parsed.chat).toEqual([]);
+    expect(parsed.versions).toEqual([]);
   });
 });
 
