@@ -159,6 +159,14 @@ describe("markdown sanitization", () => {
     expect(stripDangerousMarkdown(input)).not.toContain("<meta");
   });
 
+  it("strips slash-prefixed event handlers on self-closing tags", () => {
+    const input = "<svg/onload=alert(1)><img/src=x/onerror=alert(1)>";
+    expect(stripDangerousMarkdown(input)).not.toContain("onload");
+    expect(stripDangerousMarkdown(input)).not.toContain("onerror");
+    expect(stripDangerousMarkdown(input)).not.toContain("<svg");
+    expect(stripDangerousMarkdown(input)).not.toContain("<img");
+  });
+
   it("quotes YAML scalars with embedded newlines", () => {
     expect(sanitizeYamlScalar('Evil\nname: attacker')).toBe('"Evil name: attacker"');
   });

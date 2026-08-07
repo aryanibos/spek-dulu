@@ -7,8 +7,8 @@ export function stripDangerousMarkdown(input: string): string {
   return input
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
     .replace(/<(iframe|object|embed|svg|meta|link|style)[\s\S]*?>[\s\S]*?<\/\1>/gi, "")
-    .replace(/<(iframe|object|embed|meta|link|input)[^>]*>/gi, "")
-    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/<(iframe|object|embed|svg|meta|link|input|img)[^>]*>/gi, "")
+    .replace(/(^|[\s/>])on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "$1")
     .replace(/javascript:/gi, "");
 }
 
