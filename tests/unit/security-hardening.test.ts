@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildArtifacts, renderDesignMd, renderProductMd, renderTokensCss } from "@/lib/artifacts/render";
+import { resolveRefineSourceContent } from "@/lib/artifacts/documents";
+import { enrichBlueprint } from "@/lib/artifacts/render";
 import { renderCursorSkill } from "@/lib/artifacts/skill";
 import { buildDemoBlueprint, buildDemoVisual } from "@/lib/demos/preset";
 import {
@@ -148,6 +150,60 @@ describe("schema payload limits", () => {
     const parsed = projectBlueprintSchema.parse(legacy);
     expect(parsed.chat).toEqual([]);
     expect(parsed.versions).toEqual([]);
+  });
+
+  it("rejects oversized chat and version history arrays", () => {
+    const blueprint = buildDemoBlueprint("Aplikasi pencatat utang warung", {
+      user: "Solo shop owner",
+      job: "Record debt and mark it paid",
+      auth: "demo_profile",
+      data: "local_demo",
+      constraint: "Three screens max in Phase 1",
+    });
+
+    const tooManyChat = {
+      ...blueprint,
+      chat: Array.from({ length: 501 }, (_, i) => ({
+        id: `chat_${i}`,
+        role: "user" as const,
+        text: "hello",
+        createdAt: new Date().toISOString(),
+      })),
+    };
+    expect(projectBlueprintSchema.safeParse(tooManyChat).success).toBe(false);
+
+    const tooManyVersions = {
+      ...blueprint,
+      versions: Array.from({ length: 101 }, (_, i) => ({
+        id: `ver_${i}`,
+        documentKey: "01_PRD" as const,
+        content: "content",
+        summary: "summary",
+        createdAt: new Date().toISOString(),
+      })),
+    };
+    expect(projectBlueprintSchema.safeParse(tooManyVersions).success).toBe(false);
+  });
+});
+
+describe("refine source content", () => {
+  it("reads document content from the parsed blueprint instead of trusting the client", () => {
+    const blueprint = enrichBlueprint(
+      buildDemoBlueprint("Safe product", {
+        user: "Solo shop owner",
+        job: "Record debt and mark it paid",
+        auth: "demo_profile",
+        data: "local_demo",
+        constraint: "Three screens max in Phase 1",
+      }),
+    );
+
+    expect(resolveRefineSourceContent(blueprint, "01_PRD.md")).toContain(
+      "Product Requirements Document",
+    );
+    expect(() => resolveRefineSourceContent(blueprint, "99_EVIL.md")).toThrow(
+      "Document not found",
+    );
   });
 });
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAiProvider } from "@/lib/ai";
+import { resolveRefineSourceContent } from "@/lib/artifacts/documents";
 import { MAX_DOC_CONTENT } from "@/lib/schema/limits";
 import { projectBlueprintSchema, refineRequestSchema } from "@/lib/schema";
 import { stripDangerousMarkdown } from "@/lib/security/sanitize";
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
     const provider = getAiProvider();
     const result = await provider.refineDocument({
       fileName: body.fileName,
-      currentContent: body.currentContent,
+      currentContent: resolveRefineSourceContent(blueprint, body.fileName),
       userQuery: body.userQuery,
       blueprint,
     });

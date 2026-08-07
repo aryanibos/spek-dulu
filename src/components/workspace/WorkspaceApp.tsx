@@ -93,9 +93,12 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   }, [project]);
 
   useEffect(() => {
+    let cancelled = false;
+
     void (async () => {
       try {
         const saved = await getProject(projectId);
+        if (cancelled) return;
         if (!saved) {
           setError("Project not found in local storage. Generate it again from the home wizard.");
           setLoading(false);
@@ -104,6 +107,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         const needsEnrich =
           !saved.documents.length || !saved.artifacts?.length;
         const enriched = needsEnrich ? enrichBlueprint(saved) : saved;
+        if (cancelled) return;
         setVisualMode(enriched.visual?.originalityMode ?? "Inspired");
         setVisualUrl(enriched.referenceUrl ?? "");
         if (needsEnrich) {
@@ -111,17 +115,26 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         } else {
           setProject(enriched);
         }
+        if (cancelled) return;
         try {
           setSuggestions(await fetchDesignSuggestions(enriched));
         } catch {
           // Non-blocking: workspace still works without suggestion cards.
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load project.");
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load project.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [persist, projectId]);
 
   const docs = useMemo(() => {

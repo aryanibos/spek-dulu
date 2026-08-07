@@ -118,4 +118,15 @@ export function renderAllDocuments(bp: ProjectBlueprint, detailed = true): SpecD
   );
 }
 
+export function resolveRefineSourceContent(
+  blueprint: ProjectBlueprint,
+  fileName: string,
+): string {
+  const doc = blueprint.documents.find((entry) => entry.fileName === fileName);
+  if (!doc) {
+    throw new Error(`Document not found: ${fileName}`);
+  }
+  return doc.content;
+}
+
 export { DOC_META };

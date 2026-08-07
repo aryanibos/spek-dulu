@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { MAX_DOC_CONTENT } from "./limits";
+import {
+  MAX_CHAT_MESSAGE_TEXT,
+  MAX_CHAT_MESSAGES,
+  MAX_DOC_CONTENT,
+  MAX_DOCUMENT_VERSIONS,
+} from "./limits";
 
 export const originalityModeSchema = z.enum(["Reference", "Inspired", "Distinct"]);
 export type OriginalityMode = z.infer<typeof originalityModeSchema>;
@@ -158,7 +163,7 @@ export const coherenceReportSchema = z.object({
 export const chatMessageSchema = z.object({
   id: z.string(),
   role: z.enum(["user", "assistant"]),
-  text: z.string(),
+  text: z.string().max(MAX_CHAT_MESSAGE_TEXT),
   targetFile: z.string().optional(),
   createdAt: z.string(),
 });
@@ -166,8 +171,8 @@ export const chatMessageSchema = z.object({
 export const documentVersionSchema = z.object({
   id: z.string(),
   documentKey: documentKeySchema,
-  content: z.string(),
-  summary: z.string(),
+  content: z.string().max(MAX_DOC_CONTENT),
+  summary: z.string().max(2_000),
   createdAt: z.string(),
 });
 
@@ -187,8 +192,8 @@ export const projectBlueprintSchema = z.object({
   documents: z.array(specDocumentSchema),
   artifacts: z.array(artifactSchema),
   coherence: coherenceReportSchema.optional(),
-  chat: z.array(chatMessageSchema).default([]),
-  versions: z.array(documentVersionSchema).default([]),
+  chat: z.array(chatMessageSchema).max(MAX_CHAT_MESSAGES).default([]),
+  versions: z.array(documentVersionSchema).max(MAX_DOCUMENT_VERSIONS).default([]),
   provider: z.enum(["demo", "gemini"]),
   referenceUrl: z.string().optional(),
   hasScreenshot: z.boolean().default(false),
