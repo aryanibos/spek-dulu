@@ -107,7 +107,10 @@ export function evaluateDailyMainCommitLimit(options: {
   const now = options.now ?? new Date();
   const pendingCommits = options.pendingCommits ?? 0;
   const totalAfterPending = options.commitsToday + pendingCommits;
-  const allowed = totalAfterPending <= limit;
+  const allowed =
+    pendingCommits > 0
+      ? totalAfterPending <= limit
+      : options.commitsToday < limit;
   const remaining = Math.max(0, limit - options.commitsToday);
   const remainingAfterPending = Math.max(0, limit - totalAfterPending);
   const resetAt = getNextMorningReset(timezone, now);

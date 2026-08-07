@@ -91,8 +91,10 @@ ${d.risks.map((r) => `- ${r}`).join("\n")}
 }
 
 export function renderDesignMd(bp: ProjectBlueprint): string {
-  return bp.documents.find((d) => d.key === "02_DESIGN_SYSTEM")?.content ??
+  const content =
+    bp.documents.find((d) => d.key === "02_DESIGN_SYSTEM")?.content ??
     `# Design\n\n${bp.visual?.summary ?? "Premium light workspace."}\n`;
+  return stripDangerousMarkdown(content);
 }
 
 export function renderImplementationMd(bp: ProjectBlueprint): string {
@@ -146,7 +148,10 @@ export function buildArtifacts(bp: ProjectBlueprint): Artifact[] {
     { path: "IMPLEMENTATION.md", content: renderImplementationMd(bp) },
     { path: "TASKS.md", content: renderTasksMd(bp) },
     { path: "tokens.css", content: renderTokensCss(bp) },
-    ...documents.map((doc) => ({ path: `docs/${doc.fileName}`, content: doc.content })),
+    ...documents.map((doc) => ({
+      path: `docs/${doc.fileName}`,
+      content: stripDangerousMarkdown(doc.content),
+    })),
   ];
 }
 

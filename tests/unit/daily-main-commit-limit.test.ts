@@ -71,7 +71,7 @@ describe("daily main commit limit", () => {
     expect(result.message).toContain("Sisa 0");
   });
 
-  it("reports zero remaining slots when already at the limit", () => {
+  it("blocks further commits when already at the limit", () => {
     const result = evaluateDailyMainCommitLimit({
       commitsToday: 5,
       limit: 5,
@@ -79,7 +79,7 @@ describe("daily main commit limit", () => {
       now: new Date("2026-08-01T12:00:00.000Z"),
     });
 
-    expect(result.allowed).toBe(true);
+    expect(result.allowed).toBe(false);
     expect(result.remaining).toBe(0);
   });
 

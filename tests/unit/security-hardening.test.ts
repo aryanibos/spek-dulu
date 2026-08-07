@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderProductMd, renderTokensCss } from "@/lib/artifacts/render";
+import { buildArtifacts, renderDesignMd, renderProductMd, renderTokensCss } from "@/lib/artifacts/render";
 import { renderCursorSkill } from "@/lib/artifacts/skill";
 import { buildDemoBlueprint, buildDemoVisual } from "@/lib/demos/preset";
 import {
@@ -205,6 +205,31 @@ describe("Cursor skill export safety", () => {
 
     const product = renderProductMd(blueprint);
     expect(product).not.toContain("onerror");
+  });
+
+  it("sanitizes exported DESIGN.md and docs/*.md content", () => {
+    const blueprint = buildDemoBlueprint("Safe product", {
+      user: "Solo shop owner",
+      job: "Record debt and mark it paid",
+      auth: "demo_profile",
+      data: "local_demo",
+      constraint: "Three screens max in Phase 1",
+    });
+    blueprint.documents = blueprint.documents.map((doc) =>
+      doc.key === "02_DESIGN_SYSTEM"
+        ? { ...doc, content: "<svg/onload=alert(1)>" }
+        : { ...doc, content: "<img/src=x/onerror=alert(1)>" },
+    );
+
+    const design = renderDesignMd(blueprint);
+    expect(design).not.toContain("onload");
+    expect(design).not.toContain("<svg");
+
+    const artifacts = buildArtifacts(blueprint);
+    for (const artifact of artifacts.filter((a) => a.path.startsWith("docs/"))) {
+      expect(artifact.content).not.toContain("onerror");
+      expect(artifact.content).not.toContain("<img");
+    }
   });
 });
 
