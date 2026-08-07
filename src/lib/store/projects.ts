@@ -2,6 +2,29 @@
 
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import { projectBlueprintSchema, type ProjectBlueprint } from "@/lib/schema";
+import { MAX_CHAT_MESSAGES, MAX_DOCUMENT_VERSIONS } from "@/lib/schema/limits";
+
+/** Drop oldest chat/version entries so persisted blueprints stay within schema caps. */
+export function trimBlueprintHistory(project: ProjectBlueprint): ProjectBlueprint {
+  if (
+    project.chat.length <= MAX_CHAT_MESSAGES &&
+    project.versions.length <= MAX_DOCUMENT_VERSIONS
+  ) {
+    return project;
+  }
+
+  return {
+    ...project,
+    chat:
+      project.chat.length > MAX_CHAT_MESSAGES
+        ? project.chat.slice(-MAX_CHAT_MESSAGES)
+        : project.chat,
+    versions:
+      project.versions.length > MAX_DOCUMENT_VERSIONS
+        ? project.versions.slice(0, MAX_DOCUMENT_VERSIONS)
+        : project.versions,
+  };
+}
 
 interface SpekDuluDb extends DBSchema {
   projects: {
@@ -26,7 +49,7 @@ function getDb() {
 }
 
 export async function saveProject(project: ProjectBlueprint) {
-  const validated = projectBlueprintSchema.parse(project);
+  const validated = projectBlueprintSchema.parse(trimBlueprintHistory(project));
   const db = await getDb();
   await db.put("projects", { ...validated, updatedAt: new Date().toISOString() });
 }

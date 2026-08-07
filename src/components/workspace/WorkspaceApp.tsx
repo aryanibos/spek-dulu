@@ -65,7 +65,13 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   );
   const [suggestions, setSuggestions] = useState<DesignSuggestion[]>([]);
   const projectRef = useRef<ProjectBlueprint | null>(null);
+  const activeProjectIdRef = useRef(projectId);
   const saveChainRef = useRef(Promise.resolve());
+
+  const isActiveProject = useCallback(
+    (id: string) => activeProjectIdRef.current === id,
+    [],
+  );
 
   const persist = useCallback(async (next: ProjectBlueprint) => {
     const previous = projectRef.current;
@@ -93,6 +99,13 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   }, [project]);
 
   useEffect(() => {
+    activeProjectIdRef.current = projectId;
+    setSuggestions([]);
+    setError(null);
+    setBusy(false);
+  }, [projectId]);
+
+  useEffect(() => {
     let cancelled = false;
 
     void (async () => {
@@ -117,7 +130,10 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         }
         if (cancelled) return;
         try {
-          setSuggestions(await fetchDesignSuggestions(enriched));
+          const loadedSuggestions = await fetchDesignSuggestions(enriched);
+          if (!cancelled && isActiveProject(enriched.id)) {
+            setSuggestions(loadedSuggestions);
+          }
         } catch {
           // Non-blocking: workspace still works without suggestion cards.
         }
@@ -135,7 +151,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [persist, projectId]);
+  }, [isActiveProject, persist, projectId]);
 
   const docs = useMemo(() => {
     if (!project) return [];
@@ -159,6 +175,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   }) {
     const current = projectRef.current;
     if (!current) return;
+    const opProjectId = current.id;
     setBusy(true);
     setError(null);
     try {
@@ -176,10 +193,12 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Visual design update failed.");
+      if (!isActiveProject(opProjectId)) return;
 
       if (Array.isArray(data.suggestions)) setSuggestions(data.suggestions);
 
       const latest = projectRef.current ?? current;
+      if (latest.id !== opProjectId) return;
       const next = enrichBlueprint(
         {
           ...latest,
@@ -203,6 +222,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   async function runValidate() {
     const current = projectRef.current;
     if (!current) return;
+    const opProjectId = current.id;
     setBusy(true);
     try {
       const res = await fetch("/api/validate", {
@@ -212,7 +232,9 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Validation failed.");
+      if (!isActiveProject(opProjectId)) return;
       const latest = projectRef.current ?? current;
+      if (latest.id !== opProjectId) return;
       await persist({ ...latest, coherence: data, updatedAt: new Date().toISOString() });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Validation failed.");
@@ -224,6 +246,10 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   async function refineActive() {
     const current = projectRef.current;
     if (!current || !activeDoc || !chatInput.trim()) return;
+    const opProjectId = current.id;
+    const opDocKey = activeDoc.key;
+    const opDocContent = activeDoc.content;
+    const opDocFileName = activeDoc.fileName;
     setBusy(true);
     try {
       const res = await fetch("/api/refine", {
@@ -239,10 +265,12 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Refine failed.");
+      if (!isActiveProject(opProjectId)) return;
 
       const latest = projectRef.current ?? current;
+      if (latest.id !== opProjectId) return;
       const updatedDocs = latest.documents.map((doc) =>
-        doc.key === activeDoc.key
+        doc.key === opDocKey
           ? {
               ...doc,
               content: data.updatedContent,
@@ -251,10 +279,11 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
             }
           : doc,
       );
+      const refinedDoc = latest.documents.find((doc) => doc.key === opDocKey);
       const version = {
         id: data.versionId || createId("ver"),
-        documentKey: activeDoc.key,
-        content: activeDoc.content,
+        documentKey: opDocKey,
+        content: opDocContent,
         summary: data.summaryOfChanges,
         createdAt: new Date().toISOString(),
       };
@@ -268,14 +297,14 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
             id: createId("msg"),
             role: "user",
             text: chatInput,
-            targetFile: activeDoc.fileName,
+            targetFile: opDocFileName,
             createdAt: new Date().toISOString(),
           },
           {
             id: createId("msg"),
             role: "assistant",
             text: data.summaryOfChanges,
-            targetFile: activeDoc.fileName,
+            targetFile: opDocFileName,
             createdAt: new Date().toISOString(),
           },
         ],
@@ -292,10 +321,12 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   async function restoreVersion(versionId: string) {
     const current = projectRef.current;
     if (!current) return;
+    const opProjectId = current.id;
     const version = current.versions.find((v) => v.id === versionId);
     if (!version) return;
     setBusy(true);
     try {
+      if (!isActiveProject(opProjectId)) return;
       const updatedDocs = current.documents.map((doc) =>
         doc.key === version.documentKey
           ? {
