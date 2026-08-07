@@ -223,6 +223,12 @@ describe("markdown sanitization", () => {
     expect(stripDangerousMarkdown(input)).not.toContain("<img");
   });
 
+  it("strips unclosed script and style opening tags", () => {
+    expect(stripDangerousMarkdown("<script>alert(1)")).not.toContain("<script");
+    expect(stripDangerousMarkdown('<script src="https://evil.test/x">')).not.toContain("<script");
+    expect(stripDangerousMarkdown("<style>body{color:red}")).not.toContain("<style");
+  });
+
   it("quotes YAML scalars with embedded newlines", () => {
     expect(sanitizeYamlScalar('Evil\nname: attacker')).toBe('"Evil name: attacker"');
   });
