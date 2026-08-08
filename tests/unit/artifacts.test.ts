@@ -82,8 +82,41 @@ describe("artifact generation", () => {
 
     for (const doc of blueprint.documents) {
       expect(doc.content.length).toBeGreaterThan(800);
-      expect(doc.isDetailed).toBe(true);
+      expect(doc.isDetailed).toBe(false);
     }
+  });
+
+  it("regenerates design docs after visual update on freshly generated projects", () => {
+    const base = enrichBlueprint(
+      buildDemoBlueprint("Aplikasi pencatat utang warung", {
+        user: "Solo shop owner",
+        job: "Record debt and mark it paid",
+        auth: "demo_profile",
+        data: "local_demo",
+        constraint: "Three screens max in Phase 1",
+      }),
+    );
+    const withNewVisual = {
+      ...base,
+      visual: {
+        ...base.visual!,
+        summary: "Bold coral workspace with high contrast.",
+        colors: [
+          { name: "Primary", hex: "#FF5722", usage: "CTA" },
+          { name: "Background", hex: "#FFF8F5", usage: "Canvas" },
+          { name: "Text", hex: "#1A1A1A", usage: "Body" },
+          { name: "Border", hex: "#FFDAD0", usage: "Lines" },
+        ],
+      },
+    };
+
+    const enriched = enrichBlueprint(withNewVisual, {
+      regenerateDocumentKeys: ["02_DESIGN_SYSTEM", "10_DESIGN_ADAPTATION_GUIDE"],
+    });
+
+    const design = enriched.documents.find((d) => d.key === "02_DESIGN_SYSTEM");
+    expect(design?.content).toContain("Bold coral workspace");
+    expect(design?.content).toContain("#FF5722");
   });
 
   it("preserves existing documents when enriching without regenerate flag", () => {

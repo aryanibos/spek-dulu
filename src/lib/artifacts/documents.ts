@@ -107,7 +107,8 @@ export function renderDocument(
     fileName: meta.fileName,
     title: meta.title,
     content: stripDangerousMarkdown(content.trim()),
-    isDetailed: detailed,
+    // User refinement (chat/restore) sets isDetailed; generated docs stay regeneratable.
+    isDetailed: false,
     updatedAt: new Date().toISOString(),
   };
 }

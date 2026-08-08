@@ -54,11 +54,26 @@ export async function saveProject(project: ProjectBlueprint) {
   await db.put("projects", { ...validated, updatedAt: new Date().toISOString() });
 }
 
+function normalizeLegacyDocumentFlags(
+  project: ProjectBlueprint,
+): ProjectBlueprint {
+  const userRefinedKeys = new Set(project.versions.map((v) => v.documentKey));
+  const documents = project.documents.map((doc) =>
+    doc.isDetailed && !userRefinedKeys.has(doc.key)
+      ? { ...doc, isDetailed: false }
+      : doc,
+  );
+  if (documents.every((doc, i) => doc === project.documents[i])) {
+    return project;
+  }
+  return { ...project, documents };
+}
+
 export async function getProject(id: string) {
   const db = await getDb();
   const raw = await db.get("projects", id);
   if (!raw) return undefined;
-  return projectBlueprintSchema.parse(raw);
+  return normalizeLegacyDocumentFlags(projectBlueprintSchema.parse(raw));
 }
 
 export async function listProjects() {
