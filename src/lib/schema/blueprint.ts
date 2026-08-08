@@ -195,7 +195,7 @@ export const projectBlueprintSchema = z.object({
   chat: z.array(chatMessageSchema).max(MAX_CHAT_MESSAGES).default([]),
   versions: z.array(documentVersionSchema).max(MAX_DOCUMENT_VERSIONS).default([]),
   provider: z.enum(["demo", "gemini"]),
-  referenceUrl: z.string().optional(),
+  referenceUrl: z.string().url().optional().or(z.literal("")),
   hasScreenshot: z.boolean().default(false),
 });
 

@@ -232,6 +232,24 @@ describe("markdown sanitization", () => {
   it("quotes YAML scalars with embedded newlines", () => {
     expect(sanitizeYamlScalar('Evil\nname: attacker')).toBe('"Evil name: attacker"');
   });
+
+  it("neutralizes dangerous URL schemes in markdown links", () => {
+    const input = "![x](data:text/html;base64,abc) [y](javascript:alert(1)) [ok](https://example.com)";
+    const output = stripDangerousMarkdown(input);
+    expect(output).not.toContain("data:text/html");
+    expect(output).not.toContain("javascript:alert");
+    expect(output).toContain("[ok](https://example.com)");
+    expect(output).toContain("#blocked-scheme");
+  });
+
+  it("neutralizes dangerous href and src attributes in raw HTML", () => {
+    const input = '<a href="data:text/html,test">x</a><img src="data:image/png;base64,abc">';
+    const output = stripDangerousMarkdown(input);
+    expect(output).not.toContain("data:text/html");
+    expect(output).not.toContain("data:image/png");
+    expect(output).toContain('href="#blocked-scheme"');
+    expect(output).not.toContain("<img");
+  });
 });
 
 describe("Cursor skill export safety", () => {
