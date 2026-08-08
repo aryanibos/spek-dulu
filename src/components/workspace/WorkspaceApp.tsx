@@ -74,15 +74,23 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   );
 
   const persist = useCallback(async (next: ProjectBlueprint) => {
+    if (!isActiveProject(next.id)) {
+      return;
+    }
+
     const previous = projectRef.current;
     projectRef.current = next;
     setProject(next);
 
     const run = saveChainRef.current.then(async () => {
       try {
-        await saveProject(next);
+        const saved = await saveProject(next);
+        if (projectRef.current === next && isActiveProject(next.id)) {
+          projectRef.current = saved;
+          setProject(saved);
+        }
       } catch (err) {
-        if (projectRef.current === next) {
+        if (projectRef.current === next && isActiveProject(next.id)) {
           projectRef.current = previous;
           setProject(previous);
         }
@@ -92,7 +100,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
 
     saveChainRef.current = run.catch(() => {});
     return run;
-  }, []);
+  }, [isActiveProject]);
 
   useEffect(() => {
     projectRef.current = project;
@@ -103,6 +111,8 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
     setSuggestions([]);
     setError(null);
     setBusy(false);
+    setLoading(true);
+    setProject(null);
   }, [projectId]);
 
   useEffect(() => {

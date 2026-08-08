@@ -85,7 +85,47 @@ describe("trimBlueprintHistory", () => {
     expect(trimmed.chat.at(-1)?.text).toBe(`msg-${MAX_CHAT_MESSAGES + 2}`);
 
     expect(trimmed.versions).toHaveLength(MAX_DOCUMENT_VERSIONS);
-    expect(trimmed.versions[0]?.content).toBe("content-0");
-    expect(trimmed.versions.at(-1)?.content).toBe(`content-${MAX_DOCUMENT_VERSIONS - 1}`);
+    expect(trimmed.versions[0]?.content).toBe(`content-${MAX_DOCUMENT_VERSIONS + 1}`);
+    expect(trimmed.versions.at(-1)?.content).toBe("content-2");
+  });
+
+  it("preserves the newest version for each user-refined document when trimming", () => {
+    const fillerVersions = Array.from({ length: MAX_DOCUMENT_VERSIONS }, (_, index) => ({
+      id: `f${index}`,
+      documentKey: "01_PRD" as const,
+      content: `filler-${index}`,
+      summary: `summary-${index}`,
+      createdAt: new Date(index + 1_000).toISOString(),
+    }));
+    const refinedVersion = {
+      id: "design-refined",
+      documentKey: "02_DESIGN_SYSTEM" as const,
+      content: "user-refined-design",
+      summary: "Refined palette",
+      createdAt: new Date(0).toISOString(),
+    };
+
+    const trimmed = trimBlueprintHistory(
+      makeBlueprint({
+        documents: [
+          {
+            key: "02_DESIGN_SYSTEM",
+            title: "Design System",
+            content: "user-refined-design",
+            isDetailed: true,
+          },
+        ],
+        versions: [...fillerVersions, refinedVersion],
+      }),
+    );
+
+    expect(trimmed.versions).toHaveLength(MAX_DOCUMENT_VERSIONS);
+    expect(
+      trimmed.versions.some(
+        (version) =>
+          version.documentKey === "02_DESIGN_SYSTEM" &&
+          version.content === "user-refined-design",
+      ),
+    ).toBe(true);
   });
 });

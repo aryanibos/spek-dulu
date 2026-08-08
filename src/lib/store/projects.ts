@@ -4,6 +4,45 @@ import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import { projectBlueprintSchema, type ProjectBlueprint } from "@/lib/schema";
 import { MAX_CHAT_MESSAGES, MAX_DOCUMENT_VERSIONS } from "@/lib/schema/limits";
 
+function trimVersionHistory(
+  versions: ProjectBlueprint["versions"],
+  documents: ProjectBlueprint["documents"],
+): ProjectBlueprint["versions"] {
+  if (versions.length <= MAX_DOCUMENT_VERSIONS) {
+    return versions;
+  }
+
+  const newestFirst = [...versions].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  );
+
+  const preserveKeys = new Set(
+    documents.filter((doc) => doc.isDetailed).map((doc) => doc.key),
+  );
+
+  const mustKeep = new Map<string, ProjectBlueprint["versions"][number]>();
+  for (const version of newestFirst) {
+    if (preserveKeys.has(version.documentKey) && !mustKeep.has(version.documentKey)) {
+      mustKeep.set(version.documentKey, version);
+    }
+  }
+  const mustKeepIds = new Set([...mustKeep.values()].map((version) => version.id));
+
+  const kept: ProjectBlueprint["versions"] = [...mustKeep.values()];
+  for (const version of newestFirst) {
+    if (kept.length >= MAX_DOCUMENT_VERSIONS) {
+      break;
+    }
+    if (mustKeepIds.has(version.id)) {
+      continue;
+    }
+    kept.push(version);
+  }
+
+  kept.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return kept.slice(0, MAX_DOCUMENT_VERSIONS);
+}
+
 /** Drop oldest chat/version entries so persisted blueprints stay within schema caps. */
 export function trimBlueprintHistory(project: ProjectBlueprint): ProjectBlueprint {
   if (
@@ -19,10 +58,7 @@ export function trimBlueprintHistory(project: ProjectBlueprint): ProjectBlueprin
       project.chat.length > MAX_CHAT_MESSAGES
         ? project.chat.slice(-MAX_CHAT_MESSAGES)
         : project.chat,
-    versions:
-      project.versions.length > MAX_DOCUMENT_VERSIONS
-        ? project.versions.slice(0, MAX_DOCUMENT_VERSIONS)
-        : project.versions,
+    versions: trimVersionHistory(project.versions, project.documents),
   };
 }
 
@@ -48,10 +84,12 @@ function getDb() {
   return dbPromise;
 }
 
-export async function saveProject(project: ProjectBlueprint) {
+export async function saveProject(project: ProjectBlueprint): Promise<ProjectBlueprint> {
   const validated = projectBlueprintSchema.parse(trimBlueprintHistory(project));
   const db = await getDb();
-  await db.put("projects", { ...validated, updatedAt: new Date().toISOString() });
+  const saved = { ...validated, updatedAt: new Date().toISOString() };
+  await db.put("projects", saved);
+  return saved;
 }
 
 function normalizeLegacyDocumentFlags(
