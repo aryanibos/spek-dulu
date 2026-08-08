@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAiProvider } from "@/lib/ai";
 import { resolveRefineSourceContent } from "@/lib/artifacts/documents";
-import { MAX_DOC_CONTENT } from "@/lib/schema/limits";
+import { MAX_DOC_CONTENT, MAX_VERSION_SUMMARY } from "@/lib/schema/limits";
 import { projectBlueprintSchema, refineRequestSchema } from "@/lib/schema";
 import { stripDangerousMarkdown } from "@/lib/security/sanitize";
 import { createId } from "@/lib/utils";
@@ -24,9 +24,11 @@ export async function POST(request: Request) {
     if (updatedContent.length > MAX_DOC_CONTENT) {
       throw new Error(`Refined content exceeds ${MAX_DOC_CONTENT} characters.`);
     }
+    const summaryOfChanges = result.summaryOfChanges.slice(0, MAX_VERSION_SUMMARY);
     return NextResponse.json({
       ...result,
       updatedContent,
+      summaryOfChanges,
       versionId: createId("ver"),
     });
   } catch (error) {

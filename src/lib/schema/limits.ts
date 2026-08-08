@@ -4,6 +4,8 @@ export const MAX_DOC_CONTENT = 120_000;
 export const MAX_CHAT_MESSAGES = 500;
 export const MAX_DOCUMENT_VERSIONS = 100;
 export const MAX_CHAT_MESSAGE_TEXT = 4_000;
+export const MAX_VERSION_SUMMARY = 2_000;
+export const MAX_RAW_IDEA = 2_000;
 export const ALLOWED_SCREENSHOT_MIME = /^image\/(png|jpe?g|webp)$/i;
 
 export const boundedRecordSchema = z

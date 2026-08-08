@@ -68,6 +68,44 @@ describe("schema payload limits", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rejects oversized persisted rawIdea values", () => {
+    const blueprint = buildDemoBlueprint("Safe product", {
+      user: "Solo shop owner",
+      job: "Record debt",
+      auth: "demo_profile",
+      data: "local_demo",
+      constraint: "Three screens max",
+    });
+    const result = projectBlueprintSchema.safeParse({
+      ...blueprint,
+      rawIdea: "x".repeat(2_001),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects oversized document version summaries", () => {
+    const blueprint = buildDemoBlueprint("Safe product", {
+      user: "Solo shop owner",
+      job: "Record debt",
+      auth: "demo_profile",
+      data: "local_demo",
+      constraint: "Three screens max",
+    });
+    const result = projectBlueprintSchema.safeParse({
+      ...blueprint,
+      versions: [
+        {
+          id: "ver_test",
+          documentKey: "01_PRD",
+          content: "content",
+          summary: "x".repeat(2_001),
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects oversized interview previousAnswers keys", () => {
     const result = interviewRequestSchema.safeParse({
       idea: "A simple todo app for students who need reminders",

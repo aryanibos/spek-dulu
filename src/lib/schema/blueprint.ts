@@ -5,6 +5,8 @@ import {
   MAX_CHAT_MESSAGES,
   MAX_DOC_CONTENT,
   MAX_DOCUMENT_VERSIONS,
+  MAX_RAW_IDEA,
+  MAX_VERSION_SUMMARY,
 } from "./limits";
 
 export const originalityModeSchema = z.enum(["Reference", "Inspired", "Distinct"]);
@@ -173,7 +175,7 @@ export const documentVersionSchema = z.object({
   id: z.string(),
   documentKey: documentKeySchema,
   content: z.string().max(MAX_DOC_CONTENT),
-  summary: z.string().max(2_000),
+  summary: z.string().max(MAX_VERSION_SUMMARY),
   createdAt: z.string(),
 });
 
@@ -181,7 +183,7 @@ export const projectBlueprintSchema = z.object({
   id: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
-  rawIdea: z.string(),
+  rawIdea: z.string().max(MAX_RAW_IDEA),
   answers: boundedRecordSchema,
   decisions: productDecisionSchema,
   features: z.array(featureItemSchema),
