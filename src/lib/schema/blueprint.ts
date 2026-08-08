@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  boundedRecordSchema,
   MAX_CHAT_MESSAGE_TEXT,
   MAX_CHAT_MESSAGES,
   MAX_DOC_CONTENT,
@@ -181,7 +182,7 @@ export const projectBlueprintSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   rawIdea: z.string(),
-  answers: z.record(z.string(), z.string()),
+  answers: boundedRecordSchema,
   decisions: productDecisionSchema,
   features: z.array(featureItemSchema),
   screens: z.array(screenSchema),

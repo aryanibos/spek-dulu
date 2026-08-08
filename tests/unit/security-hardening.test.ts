@@ -16,7 +16,7 @@ import {
   specDocumentSchema,
   visualDesignRequestSchema,
 } from "@/lib/schema";
-import { sanitizeYamlScalar, stripDangerousMarkdown } from "@/lib/security/sanitize";
+import { sanitizeYamlScalar, sanitizeExportFilename, sanitizeExportHeading, stripDangerousMarkdown } from "@/lib/security/sanitize";
 import { blendHintsIntoVisual } from "@/lib/visual/analyze-url";
 
 describe("schema payload limits", () => {
@@ -50,6 +50,21 @@ describe("schema payload limits", () => {
       idea: "A simple todo app for students",
       answers,
     });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects oversized persisted blueprint answer maps", () => {
+    const answers = Object.fromEntries(
+      Array.from({ length: 21 }, (_, i) => [`key_${i}`, "value"]),
+    );
+    const blueprint = buildDemoBlueprint("Safe product", {
+      user: "Solo shop owner",
+      job: "Record debt",
+      auth: "demo_profile",
+      data: "local_demo",
+      constraint: "Three screens max",
+    });
+    const result = projectBlueprintSchema.safeParse({ ...blueprint, answers });
     expect(result.success).toBe(false);
   });
 
@@ -249,6 +264,32 @@ describe("markdown sanitization", () => {
     expect(output).not.toContain("data:image/png");
     expect(output).toContain('href="#blocked-scheme"');
     expect(output).not.toContain("<img");
+  });
+
+  it("neutralizes file and blob URL schemes in markdown links", () => {
+    const input =
+      "[local](file:///etc/passwd) [blob](blob:https://example.com/uuid) [ok](https://example.com)";
+    const output = stripDangerousMarkdown(input);
+    expect(output).not.toContain("file:///etc/passwd");
+    expect(output).not.toContain("blob:https://");
+    expect(output).toContain("[ok](https://example.com)");
+    expect(output).toContain("#blocked-scheme");
+  });
+
+  it("strips base, body, and video tags from exported markdown", () => {
+    const input =
+      '<base href="https://evil.com"><body onload=alert(1)><video src=x onerror=alert(1)></video>';
+    const output = stripDangerousMarkdown(input);
+    expect(output).not.toContain("<base");
+    expect(output).not.toContain("<body");
+    expect(output).not.toContain("<video");
+    expect(output).not.toContain("onload");
+    expect(output).not.toContain("onerror");
+  });
+
+  it("sanitizes export headings and filenames", () => {
+    expect(sanitizeExportHeading("Evil\n# injected")).toBe("Evil # injected");
+    expect(sanitizeExportFilename("../../Evil Product")).toBe("evil-product");
   });
 });
 

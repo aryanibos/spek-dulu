@@ -155,6 +155,7 @@ function isPrivateIp(ip: string): boolean {
   if (normalized.startsWith("192.168.")) return true;
   if (normalized.startsWith("169.254.")) return true;
   if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(normalized)) return true;
+  if (/^198\.(1[89])\./.test(normalized)) return true;
   if (
     normalized.startsWith("fc") ||
     normalized.startsWith("fd") ||

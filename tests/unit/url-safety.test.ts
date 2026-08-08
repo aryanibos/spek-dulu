@@ -80,6 +80,11 @@ describe("url safety", () => {
     await expect(assertSafePublicUrl("http://[64:ff9b::a9fe:a9fe]")).rejects.toThrow();
   });
 
+  it("blocks RFC 2544 benchmark range (198.18.0.0/15)", async () => {
+    await expect(assertSafePublicUrl("http://198.18.0.1")).rejects.toThrow();
+    await expect(assertSafePublicUrl("http://198.19.255.254")).rejects.toThrow();
+  });
+
   it("blocks decimal and hex loopback encodings", async () => {
     await expect(assertSafePublicUrl("http://2130706433")).rejects.toThrow();
     await expect(assertSafePublicUrl("http://0x7f000001")).rejects.toThrow();
