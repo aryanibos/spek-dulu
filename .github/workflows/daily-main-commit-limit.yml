@@ -44,6 +44,7 @@ jobs:
           COMMIT_LIMIT_TZ: Asia/Jakarta
           MAIN_DAILY_COMMIT_LIMIT: "5"
           PENDING_MAIN_COMMITS: ${{ github.event_name == 'pull_request' && '1' || '0' }}
+          RETROSPECTIVE_CHECK: ${{ github.event_name == 'push' && '1' || '0' }}
         run: npm run check:main-commit-limit
 
   midnight-merge-cursor-prs:

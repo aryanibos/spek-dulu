@@ -83,6 +83,30 @@ describe("daily main commit limit", () => {
     expect(result.remaining).toBe(0);
   });
 
+  it("allows at-quota state in retrospective post-push verification", () => {
+    const result = evaluateDailyMainCommitLimit({
+      commitsToday: 5,
+      limit: 5,
+      timezone: "Asia/Jakarta",
+      now: new Date("2026-08-01T12:00:00.000Z"),
+      retrospective: true,
+    });
+
+    expect(result.allowed).toBe(true);
+  });
+
+  it("blocks over-quota state in retrospective post-push verification", () => {
+    const result = evaluateDailyMainCommitLimit({
+      commitsToday: 6,
+      limit: 5,
+      timezone: "Asia/Jakarta",
+      now: new Date("2026-08-01T12:00:00.000Z"),
+      retrospective: true,
+    });
+
+    expect(result.allowed).toBe(false);
+  });
+
   it("includes pending commits when checking before push", () => {
     const result = evaluateDailyMainCommitLimit({
       commitsToday: 5,

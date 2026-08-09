@@ -122,6 +122,7 @@ function main() {
     limit,
     timezone,
     pendingCommits,
+    retrospective: process.env.RETROSPECTIVE_CHECK === "1",
   });
 
   console.log(result.message);

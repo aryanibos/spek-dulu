@@ -107,19 +107,27 @@ function normalizeLegacyDocumentFlags(
   return { ...project, documents };
 }
 
+function parseStoredProject(raw: ProjectBlueprint): ProjectBlueprint {
+  const trimmed = trimBlueprintHistory(raw);
+  return normalizeLegacyDocumentFlags(projectBlueprintSchema.parse(trimmed));
+}
+
 export async function getProject(id: string) {
   const db = await getDb();
   const raw = await db.get("projects", id);
   if (!raw) return undefined;
-  return normalizeLegacyDocumentFlags(projectBlueprintSchema.parse(raw));
+  return parseStoredProject(raw);
 }
 
 export async function listProjects() {
   const db = await getDb();
   const all = await db.getAll("projects");
   const projects = all.flatMap((raw) => {
-    const parsed = projectBlueprintSchema.safeParse(raw);
-    return parsed.success ? [parsed.data] : [];
+    try {
+      return [parseStoredProject(raw)];
+    } catch {
+      return [];
+    }
   });
   return projects.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }

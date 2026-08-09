@@ -101,14 +101,17 @@ export function evaluateDailyMainCommitLimit(options: {
   timezone?: string;
   now?: Date;
   pendingCommits?: number;
+  /** Post-push verification: at-quota (N/N) is OK; only N+1 is blocked. */
+  retrospective?: boolean;
 }): DailyMainCommitLimitResult {
   const limit = options.limit ?? DEFAULT_MAIN_DAILY_COMMIT_LIMIT;
   const timezone = options.timezone ?? DEFAULT_COMMIT_LIMIT_TIMEZONE;
   const now = options.now ?? new Date();
   const pendingCommits = options.pendingCommits ?? 0;
   const totalAfterPending = options.commitsToday + pendingCommits;
-  const allowed =
-    pendingCommits > 0
+  const allowed = options.retrospective
+    ? options.commitsToday <= limit
+    : pendingCommits > 0
       ? totalAfterPending <= limit
       : options.commitsToday < limit;
   const remaining = Math.max(0, limit - options.commitsToday);

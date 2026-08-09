@@ -74,23 +74,23 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   );
 
   const persist = useCallback(async (next: ProjectBlueprint) => {
-    if (!isActiveProject(next.id)) {
-      return;
-    }
-
     const previous = projectRef.current;
-    projectRef.current = next;
-    setProject(next);
+    const activeForSave = isActiveProject(next.id);
+
+    if (activeForSave) {
+      projectRef.current = next;
+      setProject(next);
+    }
 
     const run = saveChainRef.current.then(async () => {
       try {
         const saved = await saveProject(next);
-        if (projectRef.current === next && isActiveProject(next.id)) {
+        if (activeForSave && projectRef.current === next && isActiveProject(next.id)) {
           projectRef.current = saved;
           setProject(saved);
         }
       } catch (err) {
-        if (projectRef.current === next && isActiveProject(next.id)) {
+        if (activeForSave && projectRef.current === next && isActiveProject(next.id)) {
           projectRef.current = previous;
           setProject(previous);
         }
