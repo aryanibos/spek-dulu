@@ -310,6 +310,25 @@ describe("markdown sanitization", () => {
     expect(output).toContain("#blocked-scheme");
   });
 
+  it("neutralizes percent-encoded and zero-width obfuscated URL schemes", () => {
+    const input =
+      "[x](%6aavascript:alert(1)) [y](java\u200bscript:alert(1)) [ok](https://example.com)";
+    const output = stripDangerousMarkdown(input);
+    expect(output).not.toContain("alert(1)");
+    expect(output).toContain("[ok](https://example.com)");
+    expect(output).toContain("#blocked-scheme");
+  });
+
+  it("neutralizes autolink and encoded href dangerous schemes", () => {
+    const input =
+      "<javascript:alert(1)> <a href=\"%6aavascript:alert(1)\">x</a> [ok](https://example.com)";
+    const output = stripDangerousMarkdown(input);
+    expect(output).not.toContain("alert(1)");
+    expect(output).not.toContain("javascript");
+    expect(output).toContain("#blocked-scheme");
+    expect(output).toContain("[ok](https://example.com)");
+  });
+
   it("neutralizes reference-style link definitions with dangerous schemes", () => {
     const input = "[evil][1]\n\n[1]: javascript:alert(1)\n[ok]: https://example.com";
     const output = stripDangerousMarkdown(input);

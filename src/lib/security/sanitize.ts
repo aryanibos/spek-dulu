@@ -21,6 +21,8 @@ const DANGEROUS_URL_SCHEME = /^(?:javascript|data|vbscript|file|blob):/i;
 const DANGEROUS_INLINE_LINK =
   /(!?\[[^\]]*\])\(\s*((?:javascript|data|vbscript|file|blob):(?:[^()]|\([^)]*\))*)\s*\)/gi;
 
+const ZERO_WIDTH_CHARS = /[\u200B-\u200D\uFEFF]/g;
+
 function decodeUrlEntities(url: string): string {
   return url
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
@@ -29,12 +31,30 @@ function decodeUrlEntities(url: string): string {
     .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(Number.parseInt(num, 10)));
 }
 
-function hasDangerousUrlScheme(url: string): boolean {
-  const normalized = decodeUrlEntities(url)
+function normalizeUrlForSchemeCheck(url: string): string {
+  let normalized = decodeUrlEntities(url)
+    .replace(ZERO_WIDTH_CHARS, "")
     .trim()
     .replace(/^['"]|['"]$/g, "")
     .replace(/\s+/g, "");
-  return DANGEROUS_URL_SCHEME.test(normalized);
+
+  for (let round = 0; round < 2; round++) {
+    try {
+      const decoded = decodeURIComponent(normalized)
+        .replace(ZERO_WIDTH_CHARS, "")
+        .replace(/\s+/g, "");
+      if (decoded === normalized) break;
+      normalized = decoded;
+    } catch {
+      break;
+    }
+  }
+
+  return normalized;
+}
+
+function hasDangerousUrlScheme(url: string): boolean {
+  return DANGEROUS_URL_SCHEME.test(normalizeUrlForSchemeCheck(url));
 }
 
 const DANGEROUS_HTML_TAGS =
@@ -45,6 +65,10 @@ export function stripDangerousMarkdown(input: string): string {
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
     .replace(new RegExp(`<(${DANGEROUS_HTML_TAGS})[\\s\\S]*?>[\\s\\S]*?<\\/\\1>`, "gi"), "")
     .replace(new RegExp(`<(${DANGEROUS_HTML_TAGS}|input|img|script|style)[^>]*>`, "gi"), "")
+    .replace(
+      /<((?:javascript|data|vbscript|file|blob):[^>\s]*)>/gi,
+      "<#blocked-scheme>",
+    )
     .replace(/(^|[\s/>])on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "$1")
     .replace(DANGEROUS_INLINE_LINK, "$1(#blocked-scheme)")
     .replace(
