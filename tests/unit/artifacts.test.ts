@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { enrichBlueprint } from "@/lib/artifacts/render";
+import { enrichBlueprint, getMissingDocumentKeys } from "@/lib/artifacts/render";
 import { renderFullPrd } from "@/lib/artifacts/prd";
 import { renderCursorSkill } from "@/lib/artifacts/skill";
 import { validateBlueprint } from "@/lib/coherence/validate";
@@ -236,5 +236,49 @@ describe("artifact generation", () => {
     expect(enriched.documents.find((d) => d.key === "10_DESIGN_ADAPTATION_GUIDE")?.content).toContain(
       "Adaptation",
     );
+  });
+
+  it("reports missing document keys for partial sets", () => {
+    const base = enrichBlueprint(
+      buildDemoBlueprint("Aplikasi pencatat utang warung", {
+        user: "Solo shop owner",
+        job: "Record debt and mark it paid",
+        auth: "demo_profile",
+        data: "local_demo",
+        constraint: "Three screens max in Phase 1",
+      }),
+    );
+    const partial = {
+      ...base,
+      documents: base.documents.filter((doc) => doc.key !== "11_MASTER_BUILD_PROMPT"),
+    };
+
+    expect(getMissingDocumentKeys(partial.documents)).toEqual(["11_MASTER_BUILD_PROMPT"]);
+  });
+
+  it("backfills missing documents without overwriting existing ones", () => {
+    const base = enrichBlueprint(
+      buildDemoBlueprint("Aplikasi pencatat utang warung", {
+        user: "Solo shop owner",
+        job: "Record debt and mark it paid",
+        auth: "demo_profile",
+        data: "local_demo",
+        constraint: "Three screens max in Phase 1",
+      }),
+    );
+    const partial = {
+      ...base,
+      documents: base.documents.filter((doc) => doc.key !== "11_MASTER_BUILD_PROMPT"),
+      artifacts: [],
+    };
+    const missing = getMissingDocumentKeys(partial.documents);
+
+    const enriched = enrichBlueprint(partial, { regenerateDocumentKeys: missing });
+
+    expect(enriched.documents).toHaveLength(11);
+    expect(enriched.documents.find((d) => d.key === "11_MASTER_BUILD_PROMPT")?.content).toContain(
+      "Build",
+    );
+    expect(enriched.artifacts.length).toBeGreaterThan(0);
   });
 });

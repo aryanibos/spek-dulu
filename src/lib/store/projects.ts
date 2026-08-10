@@ -92,24 +92,9 @@ export async function saveProject(project: ProjectBlueprint): Promise<ProjectBlu
   return saved;
 }
 
-function normalizeLegacyDocumentFlags(
-  project: ProjectBlueprint,
-): ProjectBlueprint {
-  const userRefinedKeys = new Set(project.versions.map((v) => v.documentKey));
-  const documents = project.documents.map((doc) =>
-    doc.isDetailed && !userRefinedKeys.has(doc.key)
-      ? { ...doc, isDetailed: false }
-      : doc,
-  );
-  if (documents.every((doc, i) => doc === project.documents[i])) {
-    return project;
-  }
-  return { ...project, documents };
-}
-
 function parseStoredProject(raw: ProjectBlueprint): ProjectBlueprint {
   const trimmed = trimBlueprintHistory(raw);
-  return normalizeLegacyDocumentFlags(projectBlueprintSchema.parse(trimmed));
+  return projectBlueprintSchema.parse(trimmed);
 }
 
 export async function getProject(id: string) {

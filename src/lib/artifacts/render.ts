@@ -1,4 +1,5 @@
 import type { DocumentKey, ProjectBlueprint } from "@/lib/schema";
+import { documentKeySchema } from "@/lib/schema/blueprint";
 import { validateBlueprint } from "@/lib/coherence/validate";
 import {
   sanitizeExportHeading,
@@ -156,6 +157,13 @@ export function buildArtifacts(bp: ProjectBlueprint): Artifact[] {
       content: stripDangerousMarkdown(doc.content),
     })),
   ];
+}
+
+export function getMissingDocumentKeys(
+  documents: ProjectBlueprint["documents"],
+): DocumentKey[] {
+  const present = new Set(documents.map((doc) => doc.key));
+  return documentKeySchema.options.filter((key) => !present.has(key));
 }
 
 export function enrichBlueprint(
