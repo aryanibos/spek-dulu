@@ -291,6 +291,7 @@ describe("markdown sanitization", () => {
     const output = stripDangerousMarkdown(input);
     expect(output).not.toContain("data:text/html");
     expect(output).not.toContain("javascript:alert");
+    expect(output).not.toContain("(alert(1))");
     expect(output).toContain("[ok](https://example.com)");
     expect(output).toContain("#blocked-scheme");
   });
@@ -364,6 +365,21 @@ describe("Cursor skill export safety", () => {
 
     const product = renderProductMd(blueprint);
     expect(product).not.toContain("onerror");
+  });
+
+  it("prevents markdown structure injection via newlines in productName", () => {
+    const blueprint = buildDemoBlueprint("Safe product", {
+      user: "Solo shop owner",
+      job: "Record debt and mark it paid",
+      auth: "demo_profile",
+      data: "local_demo",
+      constraint: "Three screens max in Phase 1",
+    });
+    blueprint.decisions.productName = "Evil\n# injected heading";
+
+    const product = renderProductMd(blueprint);
+    expect(product.startsWith("# Evil # injected heading\n")).toBe(true);
+    expect(product).not.toMatch(/^# Evil\n# injected/m);
   });
 
   it("sanitizes exported DESIGN.md and docs/*.md content", () => {

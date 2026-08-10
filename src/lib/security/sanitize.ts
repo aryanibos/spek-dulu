@@ -33,7 +33,6 @@ export function stripDangerousMarkdown(input: string): string {
     .replace(new RegExp(`<(${DANGEROUS_HTML_TAGS})[\\s\\S]*?>[\\s\\S]*?<\\/\\1>`, "gi"), "")
     .replace(new RegExp(`<(${DANGEROUS_HTML_TAGS}|input|img|script|style)[^>]*>`, "gi"), "")
     .replace(/(^|[\s/>])on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "$1")
-    .replace(/javascript:/gi, "")
     .replace(
       /(!?\[[^\]]*\])\(([^)]+)\)/g,
       (match, prefix: string, url: string) =>

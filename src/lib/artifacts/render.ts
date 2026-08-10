@@ -1,6 +1,9 @@
 import type { DocumentKey, ProjectBlueprint } from "@/lib/schema";
 import { validateBlueprint } from "@/lib/coherence/validate";
-import { stripDangerousMarkdown } from "@/lib/security/sanitize";
+import {
+  sanitizeExportHeading,
+  stripDangerousMarkdown,
+} from "@/lib/security/sanitize";
 import { renderAllDocuments } from "./documents";
 import { renderCursorSkill } from "./skill";
 
@@ -48,7 +51,7 @@ export function renderTokensCss(bp: ProjectBlueprint): string {
 
 export function renderProductMd(bp: ProjectBlueprint): string {
   const d = bp.decisions;
-  return stripDangerousMarkdown(`# ${d.productName}
+  return stripDangerousMarkdown(`# ${sanitizeExportHeading(d.productName)}
 
 ## One-liner
 ${d.oneLiner}

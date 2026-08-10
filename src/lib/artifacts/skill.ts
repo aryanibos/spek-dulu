@@ -1,5 +1,9 @@
 import type { ProjectBlueprint } from "@/lib/schema";
-import { sanitizeYamlScalar, stripDangerousMarkdown } from "@/lib/security/sanitize";
+import {
+  sanitizeExportHeading,
+  sanitizeYamlScalar,
+  stripDangerousMarkdown,
+} from "@/lib/security/sanitize";
 
 export function renderCursorSkill(bp: ProjectBlueprint): string {
   const d = bp.decisions;
@@ -9,10 +13,10 @@ name: spekdulu
 description: Build the locked MVP for ${productName} using SpekDulu decisions, tokens, and Phase 1 acceptance criteria. Use when implementing this product or asking what to build next.
 ---
 
-# SpekDulu Skill for ${d.productName}
+# SpekDulu Skill for ${sanitizeExportHeading(d.productName)}
 
 ## When to use
-Use this skill whenever implementing ${d.productName}, refining UI, or deciding whether a feature belongs in Phase 1.
+Use this skill whenever implementing ${sanitizeExportHeading(d.productName)}, refining UI, or deciding whether a feature belongs in Phase 1.
 
 ## Product context
 - One-liner: ${d.oneLiner}
