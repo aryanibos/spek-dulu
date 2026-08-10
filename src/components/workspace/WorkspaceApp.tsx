@@ -91,7 +91,12 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
           setProject(saved);
         }
       } catch (err) {
-        if (activeForSave && projectRef.current === next && isActiveProject(next.id)) {
+        if (
+          activeForSave &&
+          previous != null &&
+          projectRef.current === next &&
+          isActiveProject(next.id)
+        ) {
           projectRef.current = previous;
           setProject(previous);
         }
