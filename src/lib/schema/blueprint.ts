@@ -1,13 +1,26 @@
 import { z } from "zod";
 import {
   boundedRecordSchema,
+  MAX_ACCEPTANCE_CRITERIA,
   MAX_ARTIFACT_CONTENT,
+  MAX_ARTIFACTS,
   MAX_CHAT_MESSAGE_TEXT,
   MAX_CHAT_MESSAGES,
+  MAX_COHERENCE_ISSUES,
   MAX_DOC_CONTENT,
   MAX_DOCUMENT_VERSIONS,
+  MAX_ENTITIES,
+  MAX_FEATURES,
+  MAX_ID,
+  MAX_LABEL,
+  MAX_LIST_ITEMS,
   MAX_RAW_IDEA,
+  MAX_SCREENS,
+  MAX_SUMMARY,
+  MAX_TEXT,
   MAX_VERSION_SUMMARY,
+  MAX_VISUAL_COLORS,
+  MAX_VISUAL_TYPOGRAPHY,
 } from "./limits";
 
 export const originalityModeSchema = z.enum(["Reference", "Inspired", "Distinct"]);
@@ -17,84 +30,84 @@ export const featureBucketSchema = z.enum(["build_now", "build_later", "do_not_b
 export type FeatureBucket = z.infer<typeof featureBucketSchema>;
 
 export const featureItemSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string(),
+  id: z.string().max(MAX_ID),
+  name: z.string().max(MAX_LABEL),
+  description: z.string().max(MAX_TEXT),
   bucket: featureBucketSchema,
-  reason: z.string(),
+  reason: z.string().max(MAX_TEXT),
   complexity: z.enum(["low", "medium", "high"]),
 });
 
 export const productDecisionSchema = z.object({
-  productName: z.string(),
-  oneLiner: z.string(),
-  targetUser: z.string(),
-  coreProblem: z.string(),
-  primaryJourney: z.string(),
+  productName: z.string().max(MAX_LABEL),
+  oneLiner: z.string().max(MAX_TEXT),
+  targetUser: z.string().max(MAX_LABEL),
+  coreProblem: z.string().max(MAX_TEXT),
+  primaryJourney: z.string().max(MAX_TEXT),
   mustHaveAuth: z.boolean(),
   dataMode: z.enum(["local_demo", "online_simple", "online_multiplayer"]),
-  recommendedStack: z.array(z.string()),
-  risks: z.array(z.string()),
+  recommendedStack: z.array(z.string().max(MAX_LABEL)).max(MAX_LIST_ITEMS),
+  risks: z.array(z.string().max(MAX_TEXT)).max(MAX_LIST_ITEMS),
 });
 
 export const screenSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  purpose: z.string(),
+  id: z.string().max(MAX_ID),
+  name: z.string().max(MAX_LABEL),
+  purpose: z.string().max(MAX_TEXT),
   priority: z.enum(["p0", "p1", "p2"]),
-  components: z.array(z.string()),
+  components: z.array(z.string().max(MAX_LABEL)).max(MAX_LIST_ITEMS),
 });
 
 export const entitySchema = z.object({
-  name: z.string(),
-  fields: z.array(z.string()),
-  notes: z.string().optional(),
+  name: z.string().max(MAX_LABEL),
+  fields: z.array(z.string().max(MAX_LABEL)).max(MAX_LIST_ITEMS),
+  notes: z.string().max(MAX_TEXT).optional(),
 });
 
 export const acceptanceCriterionSchema = z.object({
-  id: z.string(),
-  text: z.string(),
-  phase: z.string(),
+  id: z.string().max(MAX_ID),
+  text: z.string().max(MAX_TEXT),
+  phase: z.string().max(MAX_LABEL),
 });
 
 export const scopeAssessmentSchema = z.object({
   score: z.number().min(0).max(100),
   label: z.enum(["Lean MVP", "Balanced MVP", "Overloaded"]),
-  summary: z.string(),
-  reasons: z.array(z.string()),
-  recommendedCuts: z.array(z.string()),
+  summary: z.string().max(MAX_SUMMARY),
+  reasons: z.array(z.string().max(MAX_TEXT)).max(MAX_LIST_ITEMS),
+  recommendedCuts: z.array(z.string().max(MAX_TEXT)).max(MAX_LIST_ITEMS),
 });
 
 export const colorTokenSchema = z.object({
-  name: z.string(),
+  name: z.string().max(MAX_LABEL),
   hex: z.string().regex(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, "hex must be #RGB or #RRGGBB"),
   role: z.enum(["surface", "accent", "text", "border", "alert"]),
   source: z.enum(["observed", "inferred", "generated"]),
   confidence: z.number().min(0).max(100),
-  explanation: z.string(),
+  explanation: z.string().max(MAX_TEXT),
 });
 
 export const typographyTokenSchema = z.object({
-  family: z.string(),
+  family: z.string().max(MAX_LABEL),
   category: z.enum(["heading", "body", "mono"]),
-  notes: z.string(),
+  notes: z.string().max(MAX_TEXT),
   confidence: z.number().min(0).max(100),
 });
 
 export const visualSpecSchema = z.object({
-  summary: z.string(),
+  summary: z.string().max(MAX_SUMMARY),
   originalityMode: originalityModeSchema,
-  colors: z.array(colorTokenSchema),
-  typography: z.array(typographyTokenSchema),
-  spacingScale: z.array(z.string()),
+  colors: z.array(colorTokenSchema).max(MAX_VISUAL_COLORS),
+  typography: z.array(typographyTokenSchema).max(MAX_VISUAL_TYPOGRAPHY),
+  spacingScale: z.array(z.string().max(MAX_LABEL)).max(MAX_LIST_ITEMS),
   radii: z.object({
     button: z.string().regex(/^\d+px$/, "radius must be a pixel value like 12px"),
     card: z.string().regex(/^\d+px$/, "radius must be a pixel value like 12px"),
     modal: z.string().regex(/^\d+px$/, "radius must be a pixel value like 12px"),
   }),
-  components: z.array(z.string()),
-  sections: z.array(z.string()),
-  warnings: z.array(z.string()),
+  components: z.array(z.string().max(MAX_LABEL)).max(MAX_LIST_ITEMS),
+  sections: z.array(z.string().max(MAX_LABEL)).max(MAX_SCREENS),
+  warnings: z.array(z.string().max(MAX_TEXT)).max(MAX_LIST_ITEMS),
 });
 
 export const documentKeySchema = z.enum([
@@ -130,7 +143,7 @@ export const documentFileNameSchema = z.enum([
 export const specDocumentSchema = z.object({
   key: documentKeySchema,
   fileName: documentFileNameSchema,
-  title: z.string(),
+  title: z.string().max(MAX_LABEL),
   content: z.string().max(MAX_DOC_CONTENT),
   isDetailed: z.boolean(),
   updatedAt: z.string(),
@@ -150,30 +163,30 @@ export const artifactSchema = z.object({
 });
 
 export const coherenceIssueSchema = z.object({
-  id: z.string(),
+  id: z.string().max(MAX_ID),
   severity: z.enum(["error", "warning", "info"]),
-  source: z.string(),
-  target: z.string(),
-  message: z.string(),
+  source: z.string().max(MAX_LABEL),
+  target: z.string().max(MAX_LABEL),
+  message: z.string().max(MAX_TEXT),
 });
 
 export const coherenceReportSchema = z.object({
   score: z.number().min(0).max(100),
   status: z.enum(["Pristine", "Minor Warnings", "Action Required"]),
-  issues: z.array(coherenceIssueSchema),
+  issues: z.array(coherenceIssueSchema).max(MAX_COHERENCE_ISSUES),
   checkedAt: z.string(),
 });
 
 export const chatMessageSchema = z.object({
-  id: z.string(),
+  id: z.string().max(MAX_ID),
   role: z.enum(["user", "assistant"]),
   text: z.string().max(MAX_CHAT_MESSAGE_TEXT),
-  targetFile: z.string().optional(),
+  targetFile: z.string().max(MAX_LABEL).optional(),
   createdAt: z.string(),
 });
 
 export const documentVersionSchema = z.object({
-  id: z.string(),
+  id: z.string().max(MAX_ID),
   documentKey: documentKeySchema,
   content: z.string().max(MAX_DOC_CONTENT),
   summary: z.string().max(MAX_VERSION_SUMMARY),
@@ -181,20 +194,20 @@ export const documentVersionSchema = z.object({
 });
 
 export const projectBlueprintSchema = z.object({
-  id: z.string(),
+  id: z.string().max(MAX_ID),
   createdAt: z.string(),
   updatedAt: z.string(),
   rawIdea: z.string().max(MAX_RAW_IDEA),
   answers: boundedRecordSchema,
   decisions: productDecisionSchema,
-  features: z.array(featureItemSchema),
-  screens: z.array(screenSchema),
-  entities: z.array(entitySchema),
-  acceptanceCriteria: z.array(acceptanceCriterionSchema),
+  features: z.array(featureItemSchema).max(MAX_FEATURES),
+  screens: z.array(screenSchema).max(MAX_SCREENS),
+  entities: z.array(entitySchema).max(MAX_ENTITIES),
+  acceptanceCriteria: z.array(acceptanceCriterionSchema).max(MAX_ACCEPTANCE_CRITERIA),
   scope: scopeAssessmentSchema,
   visual: visualSpecSchema.optional(),
   documents: z.array(specDocumentSchema),
-  artifacts: z.array(artifactSchema),
+  artifacts: z.array(artifactSchema).max(MAX_ARTIFACTS),
   coherence: coherenceReportSchema.optional(),
   chat: z.array(chatMessageSchema).max(MAX_CHAT_MESSAGES).default([]),
   versions: z.array(documentVersionSchema).max(MAX_DOCUMENT_VERSIONS).default([]),

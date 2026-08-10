@@ -83,6 +83,65 @@ describe("schema payload limits", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rejects oversized nested blueprint decision and feature strings", () => {
+    const blueprint = buildDemoBlueprint("Safe product", {
+      user: "Solo shop owner",
+      job: "Record debt",
+      auth: "demo_profile",
+      data: "local_demo",
+      constraint: "Three screens max",
+    });
+    expect(
+      projectBlueprintSchema.safeParse({
+        ...blueprint,
+        decisions: { ...blueprint.decisions, oneLiner: "x".repeat(2_001) },
+      }).success,
+    ).toBe(false);
+    expect(
+      projectBlueprintSchema.safeParse({
+        ...blueprint,
+        features: [
+          {
+            ...blueprint.features[0]!,
+            description: "x".repeat(2_001),
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects oversized feature arrays on persisted blueprints", () => {
+    const blueprint = buildDemoBlueprint("Safe product", {
+      user: "Solo shop owner",
+      job: "Record debt",
+      auth: "demo_profile",
+      data: "local_demo",
+      constraint: "Three screens max",
+    });
+    const result = projectBlueprintSchema.safeParse({
+      ...blueprint,
+      features: Array.from({ length: 51 }, (_, i) => ({
+        ...blueprint.features[0]!,
+        id: `feature_${i}`,
+        name: `Feature ${i}`,
+      })),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("keeps enriched demo blueprints within nested schema caps", () => {
+    const blueprint = enrichBlueprint(
+      buildDemoBlueprint("Aplikasi pencatat utang warung", {
+        user: "Solo shop owner",
+        job: "Record debt and mark it paid",
+        auth: "demo_profile",
+        data: "local_demo",
+        constraint: "Three screens max in Phase 1",
+      }),
+    );
+    expect(projectBlueprintSchema.safeParse(blueprint).success).toBe(true);
+  });
+
   it("rejects oversized document version summaries", () => {
     const blueprint = buildDemoBlueprint("Safe product", {
       user: "Solo shop owner",
@@ -426,6 +485,21 @@ describe("Cursor skill export safety", () => {
     const product = renderProductMd(blueprint);
     expect(product.startsWith("# Evil # injected heading\n")).toBe(true);
     expect(product).not.toMatch(/^# Evil\n# injected/m);
+  });
+
+  it("prevents markdown structure injection via newlines in oneLiner", () => {
+    const blueprint = buildDemoBlueprint("Safe product", {
+      user: "Solo shop owner",
+      job: "Record debt and mark it paid",
+      auth: "demo_profile",
+      data: "local_demo",
+      constraint: "Three screens max in Phase 1",
+    });
+    blueprint.decisions.oneLiner = "Evil\n## injected heading";
+
+    const product = renderProductMd(blueprint);
+    expect(product).toContain("## One-liner\nEvil ## injected heading");
+    expect(product).not.toMatch(/## One-liner\nEvil\n## injected/m);
   });
 
   it("sanitizes exported DESIGN.md and docs/*.md content", () => {

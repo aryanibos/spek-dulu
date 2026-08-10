@@ -8,21 +8,22 @@ import {
 export function renderCursorSkill(bp: ProjectBlueprint): string {
   const d = bp.decisions;
   const productName = sanitizeYamlScalar(d.productName);
+  const heading = sanitizeExportHeading;
   const content = `---
 name: spekdulu
 description: Build the locked MVP for ${productName} using SpekDulu decisions, tokens, and Phase 1 acceptance criteria. Use when implementing this product or asking what to build next.
 ---
 
-# SpekDulu Skill for ${sanitizeExportHeading(d.productName)}
+# SpekDulu Skill for ${heading(d.productName)}
 
 ## When to use
-Use this skill whenever implementing ${sanitizeExportHeading(d.productName)}, refining UI, or deciding whether a feature belongs in Phase 1.
+Use this skill whenever implementing ${heading(d.productName)}, refining UI, or deciding whether a feature belongs in Phase 1.
 
 ## Product context
-- One-liner: ${d.oneLiner}
-- Target user: ${d.targetUser}
-- Core problem: ${d.coreProblem}
-- Primary journey: ${d.primaryJourney}
+- One-liner: ${heading(d.oneLiner)}
+- Target user: ${heading(d.targetUser)}
+- Core problem: ${heading(d.coreProblem)}
+- Primary journey: ${heading(d.primaryJourney)}
 - Auth in Phase 1: ${d.mustHaveAuth ? "yes" : "no"}
 - Data mode: ${d.dataMode}
 
@@ -41,13 +42,13 @@ Use this skill whenever implementing ${sanitizeExportHeading(d.productName)}, re
 ## Build Now only
 ${bp.features
   .filter((f) => f.bucket === "build_now")
-  .map((f) => `- ${f.name}: ${f.description}`)
+  .map((f) => `- ${heading(f.name)}: ${heading(f.description)}`)
   .join("\n")}
 
 ## Do not build yet
 ${bp.features
   .filter((f) => f.bucket !== "build_now")
-  .map((f) => `- ${f.name}: ${f.reason}`)
+  .map((f) => `- ${heading(f.name)}: ${heading(f.reason)}`)
   .join("\n")}
 
 ## Implementation order
@@ -59,7 +60,7 @@ ${bp.features
 6. Stop and summarize what remains
 
 ## Acceptance criteria
-${bp.acceptanceCriteria.map((a) => `- ${a.text}`).join("\n")}
+${bp.acceptanceCriteria.map((a) => `- ${heading(a.text)}`).join("\n")}
 
 ## Definition of done
 - Phase 1 criteria pass

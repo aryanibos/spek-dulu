@@ -52,43 +52,44 @@ export function renderTokensCss(bp: ProjectBlueprint): string {
 
 export function renderProductMd(bp: ProjectBlueprint): string {
   const d = bp.decisions;
-  return stripDangerousMarkdown(`# ${sanitizeExportHeading(d.productName)}
+  const heading = sanitizeExportHeading;
+  return stripDangerousMarkdown(`# ${heading(d.productName)}
 
 ## One-liner
-${d.oneLiner}
+${heading(d.oneLiner)}
 
 ## Problem
-${d.coreProblem}
+${heading(d.coreProblem)}
 
 ## Users
-${d.targetUser}
+${heading(d.targetUser)}
 
 ## Primary journey
-${d.primaryJourney}
+${heading(d.primaryJourney)}
 
 ## Build now
 ${bp.features
   .filter((f) => f.bucket === "build_now")
-  .map((f) => `- ${f.name}: ${f.description}`)
+  .map((f) => `- ${heading(f.name)}: ${heading(f.description)}`)
   .join("\n")}
 
 ## Non-goals
 ${bp.features
   .filter((f) => f.bucket !== "build_now")
-  .map((f) => `- ${f.name}: ${f.reason}`)
+  .map((f) => `- ${heading(f.name)}: ${heading(f.reason)}`)
   .join("\n")}
 
 ## Acceptance criteria
-${bp.acceptanceCriteria.map((a) => `- [ ] ${a.text}`).join("\n")}
+${bp.acceptanceCriteria.map((a) => `- [ ] ${heading(a.text)}`).join("\n")}
 
 ## Constraints
 - Auth in Phase 1: ${d.mustHaveAuth ? "yes" : "no"}
 - Data mode: ${d.dataMode}
-- Stack: ${d.recommendedStack.join(", ")}
-- Scope: ${bp.scope.label} (${bp.scope.score}/100)
+- Stack: ${d.recommendedStack.map(heading).join(", ")}
+- Scope: ${heading(bp.scope.label)} (${bp.scope.score}/100)
 
 ## Risks
-${d.risks.map((r) => `- ${r}`).join("\n")}
+${d.risks.map((r) => `- ${heading(r)}`).join("\n")}
 
 > Full PRD details live in \`docs/01_PRD.md\`.
 `);
@@ -102,43 +103,45 @@ export function renderDesignMd(bp: ProjectBlueprint): string {
 }
 
 export function renderImplementationMd(bp: ProjectBlueprint): string {
+  const heading = sanitizeExportHeading;
   return stripDangerousMarkdown(`# Implementation Plan
 
 ## Phase 1
-${bp.acceptanceCriteria.map((a) => `1. ${a.text}`).join("\n")}
+${bp.acceptanceCriteria.map((a) => `1. ${heading(a.text)}`).join("\n")}
 
 ## Screens
-${bp.screens.map((s) => `- ${s.name}: ${s.purpose}`).join("\n")}
+${bp.screens.map((s) => `- ${heading(s.name)}: ${heading(s.purpose)}`).join("\n")}
 
 ## Entities
-${bp.entities.map((e) => `- ${e.name}: ${e.fields.join(", ")}`).join("\n")}
+${bp.entities.map((e) => `- ${heading(e.name)}: ${e.fields.map(heading).join(", ")}`).join("\n")}
 
 ## Constraints
 - Auth required: ${bp.decisions.mustHaveAuth ? "yes" : "no"}
 - Data mode: ${bp.decisions.dataMode}
-- Scope label: ${bp.scope.label}
+- Scope label: ${heading(bp.scope.label)}
 `);
 }
 
 export function renderTasksMd(bp: ProjectBlueprint): string {
+  const heading = sanitizeExportHeading;
   return stripDangerousMarkdown(`# Tasks
 
 ## Now
 ${bp.features
   .filter((f) => f.bucket === "build_now")
-  .map((f, i) => `${i + 1}. [ ] ${f.name} - ${f.description}`)
+  .map((f, i) => `${i + 1}. [ ] ${heading(f.name)} - ${heading(f.description)}`)
   .join("\n")}
 
 ## Later
 ${bp.features
   .filter((f) => f.bucket === "build_later")
-  .map((f) => `- [ ] ${f.name}`)
+  .map((f) => `- [ ] ${heading(f.name)}`)
   .join("\n")}
 
 ## Do not build
 ${bp.features
   .filter((f) => f.bucket === "do_not_build")
-  .map((f) => `- [ ] ${f.name} (${f.reason})`)
+  .map((f) => `- [ ] ${heading(f.name)} (${heading(f.reason)})`)
   .join("\n")}
 `);
 }
