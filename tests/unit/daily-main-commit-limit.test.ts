@@ -3,6 +3,7 @@ import {
   countCommitsToday,
   evaluateDailyMainCommitLimit,
   findBackdatedCommits,
+  findFutureDatedCommits,
   formatDayKey,
   getDayStart,
   getNextMorningReset,
@@ -28,7 +29,7 @@ describe("daily main commit limit", () => {
         "Asia/Jakarta",
         new Date("2026-08-01T12:00:00.000Z"),
       ),
-    ).toBe(2);
+    ).toBe(3);
   });
 
   it("allows commits while under the daily limit", () => {
@@ -152,5 +153,25 @@ describe("daily main commit limit", () => {
 
     expect(findBackdatedCommits(commits, "Asia/Jakarta", now)).toHaveLength(1);
     expect(formatDayKey(dayStart, "Asia/Jakarta")).toBe("2026-08-01");
+  });
+
+  it("counts future-dated commits toward today's quota", () => {
+    const now = new Date("2026-08-01T12:00:00.000Z");
+    const commits = [
+      { committedAt: new Date("2026-08-02T10:00:00.000Z") },
+      { committedAt: new Date("2026-07-30T10:00:00.000Z") },
+    ];
+
+    expect(countCommitsToday(commits, "Asia/Jakarta", now)).toBe(1);
+  });
+
+  it("detects commits with future committer dates", () => {
+    const now = new Date("2026-08-01T12:00:00.000Z");
+    const commits = [
+      { committedAt: new Date("2026-08-02T10:00:00.000Z") },
+      { committedAt: new Date("2026-08-01T10:00:00.000Z") },
+    ];
+
+    expect(findFutureDatedCommits(commits, "Asia/Jakarta", now)).toHaveLength(1);
   });
 });

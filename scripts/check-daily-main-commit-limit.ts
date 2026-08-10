@@ -6,6 +6,7 @@ import {
   DEFAULT_MAIN_DAILY_COMMIT_LIMIT,
   evaluateDailyMainCommitLimit,
   findBackdatedCommits,
+  findFutureDatedCommits,
   isDailyMainCommitQuotaExhausted,
   type CommitTimestamp,
 } from "../src/lib/git/daily-main-commit-limit.ts";
@@ -80,6 +81,13 @@ function readPendingMainCommits(timezone: string) {
     if (backdated.length > 0) {
       throw new Error(
         `Backdated committer dates are not allowed (${backdated.length} commit(s) before today in ${timezone}).`,
+      );
+    }
+
+    const futureDated = findFutureDatedCommits(commits, timezone);
+    if (futureDated.length > 0) {
+      throw new Error(
+        `Future-dated committer dates are not allowed (${futureDated.length} commit(s) after today in ${timezone}).`,
       );
     }
 

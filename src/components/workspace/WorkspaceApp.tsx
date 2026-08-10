@@ -150,7 +150,18 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         setVisualMode(enriched.visual?.originalityMode ?? "Inspired");
         setVisualUrl(enriched.referenceUrl ?? "");
         if (needsEnrich) {
-          await persist(enriched);
+          try {
+            await persist(enriched);
+          } catch (err) {
+            if (!cancelled) {
+              setError(
+                err instanceof Error
+                  ? err.message
+                  : "Failed to save enriched project to local storage.",
+              );
+            }
+            return;
+          }
         } else {
           setProject(enriched);
         }
@@ -353,6 +364,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
     const version = current.versions.find((v) => v.id === versionId);
     if (!version) return;
     setBusy(true);
+    setError(null);
     try {
       if (!isActiveProject(opProjectId)) return;
       const updatedDocs = current.documents.map((doc) =>
