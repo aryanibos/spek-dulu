@@ -67,41 +67,68 @@ function readCommitTimestampsInRange(base: string, tip: string): CommitTimestamp
     .map((iso) => ({ committedAt: new Date(iso) }));
 }
 
-function readPendingMainCommits(timezone: string) {
+function assertValidCommitDates(commits: CommitTimestamp[], timezone: string) {
+  const backdated = findBackdatedCommits(commits, timezone);
+  if (backdated.length > 0) {
+    throw new Error(
+      `Backdated committer dates are not allowed (${backdated.length} commit(s) before today in ${timezone}).`,
+    );
+  }
+
+  const futureDated = findFutureDatedCommits(commits, timezone);
+  if (futureDated.length > 0) {
+    throw new Error(
+      `Future-dated committer dates are not allowed (${futureDated.length} commit(s) after today in ${timezone}).`,
+    );
+  }
+}
+
+function readPushRangeCommits(): CommitTimestamp[] {
   const pushTip = process.env.GIT_PUSH_TIP;
+  if (!pushTip) {
+    return [];
+  }
+
   const pushBase = process.env.GIT_PUSH_BASE;
+  return !pushBase || pushBase === ZERO_SHA
+    ? readCommitTimestamps(pushTip)
+    : readCommitTimestampsInRange(pushBase, pushTip);
+}
 
-  if (pushTip) {
-    const commits =
-      !pushBase || pushBase === ZERO_SHA
-        ? readCommitTimestamps(pushTip)
-        : readCommitTimestampsInRange(pushBase, pushTip);
-
-    const backdated = findBackdatedCommits(commits, timezone);
-    if (backdated.length > 0) {
+function readPendingMainCommits(timezone: string) {
+  if (process.env.PENDING_MAIN_COMMITS !== undefined) {
+    const raw = process.env.PENDING_MAIN_COMMITS;
+    const pending = Number.parseInt(raw, 10);
+    if (!Number.isFinite(pending) || pending < 0) {
       throw new Error(
-        `Backdated committer dates are not allowed (${backdated.length} commit(s) before today in ${timezone}).`,
+        `PENDING_MAIN_COMMITS must be a non-negative integer, got "${raw}"`,
       );
     }
+    return pending;
+  }
 
-    const futureDated = findFutureDatedCommits(commits, timezone);
-    if (futureDated.length > 0) {
-      throw new Error(
-        `Future-dated committer dates are not allowed (${futureDated.length} commit(s) after today in ${timezone}).`,
-      );
-    }
-
+  const commits = readPushRangeCommits();
+  if (commits.length > 0) {
+    assertValidCommitDates(commits, timezone);
     return commits.length;
   }
 
-  const raw = process.env.PENDING_MAIN_COMMITS ?? "0";
-  const pending = Number.parseInt(raw, 10);
-  if (!Number.isFinite(pending) || pending < 0) {
-    throw new Error(
-      `PENDING_MAIN_COMMITS must be a non-negative integer, got "${raw}"`,
-    );
+  return 0;
+}
+
+function validateRetrospectiveCommitDates(
+  commits: CommitTimestamp[],
+  timezone: string,
+) {
+  const pushCommits = readPushRangeCommits();
+  if (pushCommits.length > 0) {
+    assertValidCommitDates(pushCommits, timezone);
+    return;
   }
-  return pending;
+
+  if (commits.length > 0) {
+    assertValidCommitDates([commits[0]!], timezone);
+  }
 }
 
 function main() {
@@ -123,6 +150,11 @@ function main() {
   const branchRef =
     branch && branch !== ZERO_SHA ? resolveGitBranchRef(branch) : "";
   const commits = branchRef ? readCommitTimestamps(branchRef) : [];
+
+  if (process.env.RETROSPECTIVE_CHECK === "1") {
+    validateRetrospectiveCommitDates(commits, timezone);
+  }
+
   const commitsToday = countCommitsToday(commits, timezone);
   const pendingCommits = readPendingMainCommits(timezone);
   const result = evaluateDailyMainCommitLimit({
