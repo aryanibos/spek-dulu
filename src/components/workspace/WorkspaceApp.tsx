@@ -19,7 +19,8 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { ScopeMeter } from "@/components/wizard/ScopeMeter";
 import { buildCursorInstruction, downloadBlueprintZip } from "@/lib/artifacts/zip";
-import { enrichBlueprint } from "@/lib/artifacts/render";
+import { enrichBlueprint, getMissingDocumentKeys } from "@/lib/artifacts/render";
+import { stripDangerousMarkdown } from "@/lib/security/sanitize";
 import type { DocumentKey, ProjectBlueprint, SpecDocument } from "@/lib/schema";
 import { getProject, saveProject } from "@/lib/store/projects";
 import { createId } from "@/lib/utils";
@@ -127,9 +128,19 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
           setLoading(false);
           return;
         }
+        const missingDocKeys = getMissingDocumentKeys(saved.documents);
         const needsEnrich =
-          !saved.documents.length || !saved.artifacts?.length;
-        const enriched = needsEnrich ? enrichBlueprint(saved) : saved;
+          !saved.documents.length ||
+          !saved.artifacts?.length ||
+          missingDocKeys.length > 0;
+        const enriched = needsEnrich
+          ? enrichBlueprint(
+              saved,
+              missingDocKeys.length > 0 && saved.documents.length > 0
+                ? { regenerateDocumentKeys: missingDocKeys }
+                : undefined,
+            )
+          : saved;
         if (cancelled) return;
         setVisualMode(enriched.visual?.originalityMode ?? "Inspired");
         setVisualUrl(enriched.referenceUrl ?? "");
@@ -234,6 +245,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
     if (!current) return;
     const opProjectId = current.id;
     setBusy(true);
+    setError(null);
     try {
       const res = await fetch("/api/validate", {
         method: "POST",
@@ -261,6 +273,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
     const opDocContent = activeDoc.content;
     const opDocFileName = activeDoc.fileName;
     setBusy(true);
+    setError(null);
     try {
       const res = await fetch("/api/refine", {
         method: "POST",
@@ -542,7 +555,9 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
                   </div>
                 </div>
                 <article className="markdown-body max-w-none space-y-3 text-sm leading-relaxed text-[var(--text-secondary)] [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:text-[var(--text)] [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-[var(--text)] [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-[var(--text)] [&_code]:rounded [&_code]:bg-[#F3F4F6] [&_code]:px-1 [&_li]:ml-4 [&_li]:list-disc [&_pre]:overflow-x-auto [&_pre]:rounded-[14px] [&_pre]:bg-[#0F172A] [&_pre]:p-4 [&_pre]:text-white">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{activeDoc.content}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {stripDangerousMarkdown(activeDoc.content)}
+                  </ReactMarkdown>
                 </article>
 
                 {chatOpen && (
