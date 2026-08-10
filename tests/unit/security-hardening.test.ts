@@ -296,6 +296,33 @@ describe("markdown sanitization", () => {
     expect(output).toContain("#blocked-scheme");
   });
 
+  it("neutralizes javascript links with nested parentheses and extra whitespace", () => {
+    const input = "[x](  javascript:alert(1)  ) [ok](https://example.com)";
+    const output = stripDangerousMarkdown(input);
+    expect(output).toBe("[x](#blocked-scheme) [ok](https://example.com)");
+  });
+
+  it("neutralizes entity-encoded dangerous URL schemes in markdown links", () => {
+    const input = "[x](javascript&#58;alert(1)) [y](javascript&#x3a;alert(1))";
+    const output = stripDangerousMarkdown(input);
+    expect(output).not.toContain("javascript");
+    expect(output).not.toContain("alert(1)");
+    expect(output).toContain("#blocked-scheme");
+  });
+
+  it("neutralizes reference-style link definitions with dangerous schemes", () => {
+    const input = "[evil][1]\n\n[1]: javascript:alert(1)\n[ok]: https://example.com";
+    const output = stripDangerousMarkdown(input);
+    expect(output).toContain("[1]: #blocked-scheme");
+    expect(output).not.toContain("javascript:alert");
+    expect(output).toContain("[ok]: https://example.com");
+  });
+
+  it("strips unicode line separators from export headings and YAML scalars", () => {
+    expect(sanitizeExportHeading("Evil\u2028# injected")).toBe("Evil # injected");
+    expect(sanitizeYamlScalar("Evil\u2029name: attacker")).toBe('"Evil name: attacker"');
+  });
+
   it("neutralizes dangerous href and src attributes in raw HTML", () => {
     const input = '<a href="data:text/html,test">x</a><img src="data:image/png;base64,abc">';
     const output = stripDangerousMarkdown(input);

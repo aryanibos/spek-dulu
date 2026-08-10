@@ -1,5 +1,5 @@
 export function sanitizeExportHeading(value: string): string {
-  return value.replace(/[\r\n\0]/g, " ").trim();
+  return value.replace(/[\r\n\0\u2028\u2029]/g, " ").trim();
 }
 
 export function sanitizeExportFilename(value: string): string {
@@ -13,14 +13,27 @@ export function sanitizeExportFilename(value: string): string {
 }
 
 export function sanitizeYamlScalar(value: string): string {
-  const cleaned = value.replace(/[\r\n]/g, " ").trim();
+  const cleaned = value.replace(/[\r\n\u2028\u2029]/g, " ").trim();
   return `"${cleaned.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
 const DANGEROUS_URL_SCHEME = /^(?:javascript|data|vbscript|file|blob):/i;
+const DANGEROUS_INLINE_LINK =
+  /(!?\[[^\]]*\])\(\s*((?:javascript|data|vbscript|file|blob):(?:[^()]|\([^)]*\))*)\s*\)/gi;
+
+function decodeUrlEntities(url: string): string {
+  return url
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
+      String.fromCharCode(Number.parseInt(hex, 16)),
+    )
+    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(Number.parseInt(num, 10)));
+}
 
 function hasDangerousUrlScheme(url: string): boolean {
-  const normalized = url.trim().replace(/^['"]|['"]$/g, "").replace(/\s+/g, "");
+  const normalized = decodeUrlEntities(url)
+    .trim()
+    .replace(/^['"]|['"]$/g, "")
+    .replace(/\s+/g, "");
   return DANGEROUS_URL_SCHEME.test(normalized);
 }
 
@@ -33,10 +46,16 @@ export function stripDangerousMarkdown(input: string): string {
     .replace(new RegExp(`<(${DANGEROUS_HTML_TAGS})[\\s\\S]*?>[\\s\\S]*?<\\/\\1>`, "gi"), "")
     .replace(new RegExp(`<(${DANGEROUS_HTML_TAGS}|input|img|script|style)[^>]*>`, "gi"), "")
     .replace(/(^|[\s/>])on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "$1")
+    .replace(DANGEROUS_INLINE_LINK, "$1(#blocked-scheme)")
     .replace(
       /(!?\[[^\]]*\])\(([^)]+)\)/g,
       (match, prefix: string, url: string) =>
         hasDangerousUrlScheme(url) ? `${prefix}(#blocked-scheme)` : match,
+    )
+    .replace(
+      /^(\s*\[[^\]]+\]:\s*)(.+)$/gm,
+      (match, prefix: string, url: string) =>
+        hasDangerousUrlScheme(url) ? `${prefix}#blocked-scheme` : match,
     )
     .replace(
       /(\s(?:href|src)\s*=\s*)("([^"]*)"|'([^']*)'|([^\s>]+))/gi,
