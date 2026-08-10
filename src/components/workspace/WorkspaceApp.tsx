@@ -23,6 +23,7 @@ import { enrichBlueprint, getMissingDocumentKeys } from "@/lib/artifacts/render"
 import { stripDangerousMarkdown } from "@/lib/security/sanitize";
 import type { DocumentKey, ProjectBlueprint, SpecDocument } from "@/lib/schema";
 import { getProject, saveProject } from "@/lib/store/projects";
+import { serializeBlueprintForApi } from "@/lib/blueprint/api-payload";
 import { createId } from "@/lib/utils";
 
 type DesignSuggestion = {
@@ -39,7 +40,7 @@ async function fetchDesignSuggestions(bp: ProjectBlueprint): Promise<DesignSugge
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       action: "suggest",
-      blueprintJson: JSON.stringify(bp),
+      blueprintJson: serializeBlueprintForApi(bp),
       originalityMode: bp.visual?.originalityMode ?? "Inspired",
     }),
   });
@@ -221,7 +222,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action,
-          blueprintJson: JSON.stringify(current),
+          blueprintJson: serializeBlueprintForApi(current),
           originalityMode: visualMode,
           presetId: extra?.presetId,
           instruction: extra?.instruction,
@@ -266,7 +267,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
       const res = await fetch("/api/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blueprintJson: JSON.stringify(current) }),
+        body: JSON.stringify({ blueprintJson: serializeBlueprintForApi(current) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Validation failed.");
@@ -299,7 +300,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
           fileName: activeDoc.fileName,
           currentContent: activeDoc.content,
           userQuery: chatInput,
-          blueprintJson: JSON.stringify(current),
+          blueprintJson: serializeBlueprintForApi(current),
         }),
       });
       const data = await res.json();

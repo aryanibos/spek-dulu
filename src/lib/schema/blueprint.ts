@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   boundedRecordSchema,
+  MAX_ARTIFACT_CONTENT,
   MAX_CHAT_MESSAGE_TEXT,
   MAX_CHAT_MESSAGES,
   MAX_DOC_CONTENT,
@@ -145,7 +146,7 @@ export const artifactPathSchema = z
 
 export const artifactSchema = z.object({
   path: artifactPathSchema,
-  content: z.string(),
+  content: z.string().max(MAX_ARTIFACT_CONTENT),
 });
 
 export const coherenceIssueSchema = z.object({

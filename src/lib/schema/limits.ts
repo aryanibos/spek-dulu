@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const MAX_DOC_CONTENT = 120_000;
+export const MAX_ARTIFACT_CONTENT = MAX_DOC_CONTENT;
 export const MAX_CHAT_MESSAGES = 500;
 export const MAX_DOCUMENT_VERSIONS = 100;
 export const MAX_CHAT_MESSAGE_TEXT = 4_000;
