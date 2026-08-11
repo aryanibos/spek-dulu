@@ -121,7 +121,10 @@ jobs:
               continue
             fi
 
-            gh pr merge "$pr" --squash --delete-branch --admin
+            if ! gh pr merge "$pr" --squash --delete-branch --admin; then
+              echo "Failed to merge PR #${pr}; continuing queue."
+              continue
+            fi
             echo "Merged PR #${pr} at ${head_sha}."
             git fetch origin main
           done
