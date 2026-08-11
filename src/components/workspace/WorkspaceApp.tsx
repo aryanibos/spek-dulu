@@ -59,7 +59,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"doc" | "cursor" | null>(null);
   const [visualInstruction, setVisualInstruction] = useState("");
   const [visualUrl, setVisualUrl] = useState("");
   const [visualMode, setVisualMode] = useState<"Reference" | "Inspired" | "Distinct">(
@@ -564,11 +564,11 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
                       variant="secondary"
                       onClick={async () => {
                         await navigator.clipboard.writeText(activeDoc.content);
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 1200);
+                        setCopied("doc");
+                        setTimeout(() => setCopied(null), 1200);
                       }}
                     >
-                      {copied ? <CheckCircle /> : <Copy />} Copy
+                      {copied === "doc" ? <CheckCircle /> : <Copy />} Copy
                     </Button>
                   </div>
                 </div>
@@ -835,11 +835,11 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
             <Button
               onClick={async () => {
                 await navigator.clipboard.writeText(buildCursorInstruction(project));
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1200);
+                setCopied("cursor");
+                setTimeout(() => setCopied(null), 1200);
               }}
             >
-              {copied ? <CheckCircle /> : <Copy />} Copy Cursor instruction
+              {copied === "cursor" ? <CheckCircle /> : <Copy />} Copy Cursor instruction
             </Button>
             <Button variant="secondary" onClick={() => void downloadBlueprintZip(project)}>
               <DownloadSimple /> Download Skill package
