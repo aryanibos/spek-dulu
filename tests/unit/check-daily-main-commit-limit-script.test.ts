@@ -72,4 +72,19 @@ describe("check-daily-main-commit-limit script", () => {
     expect(result.status).toBe(0);
     expect(result.output).toContain("/5 commit ke main hari ini");
   });
+
+  it("rejects shell metacharacters in GIT_PUSH_TIP", () => {
+    const result = runCommitLimitCheck({
+      GIT_BRANCH: "origin/main",
+      GIT_PUSH_TIP: "deadbeef; rm -rf /",
+      GIT_PUSH_BASE: ZERO_SHA,
+      GIT_PUSH_COMMIT_COUNT: "1",
+      RETROSPECTIVE_CHECK: "1",
+      COMMIT_LIMIT_TZ: "Asia/Jakarta",
+      MAIN_DAILY_COMMIT_LIMIT: "5",
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(result.output).toContain("Invalid GIT_PUSH_TIP");
+  });
 });

@@ -2,6 +2,7 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 import {
   isSameOriginApiRequest,
+  shouldAlwaysGuardApiPath,
   shouldGuardApiRoutes,
 } from "@/lib/security/api-guard";
 
@@ -27,6 +28,12 @@ describe("api guard", () => {
 
     vi.stubEnv("GEMINI_API_KEY", "test-key");
     expect(shouldGuardApiRoutes()).toBe(true);
+  });
+
+  it("always guards URL-fetch API paths even without GEMINI_API_KEY", () => {
+    expect(shouldAlwaysGuardApiPath("/api/analyze-url")).toBe(true);
+    expect(shouldAlwaysGuardApiPath("/api/visual-design")).toBe(true);
+    expect(shouldAlwaysGuardApiPath("/api/interview")).toBe(false);
   });
 
   it("accepts same-origin requests via Sec-Fetch-Site", () => {

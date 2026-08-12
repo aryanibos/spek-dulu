@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import {
   countCommitsToday,
   DEFAULT_COMMIT_LIMIT_TIMEZONE,
@@ -12,6 +12,28 @@ import {
 } from "../src/lib/git/daily-main-commit-limit.ts";
 
 const ZERO_SHA = "0000000000000000000000000000000000000000";
+const GIT_SHA_RE = /^[0-9a-f]{40}$/i;
+const SAFE_GIT_REF_RE = /^[\w./-]+$/;
+
+function runGit(args: string[], encoding?: "buffer" | null): Buffer;
+function runGit(args: string[], encoding: "utf8"): string;
+function runGit(args: string[], encoding: "utf8" | "buffer" | null = "utf8"): string | Buffer {
+  return execFileSync("git", args, {
+    encoding,
+    stdio: encoding === null ? ["ignore", "ignore", "ignore"] : ["ignore", "pipe", "pipe"],
+  });
+}
+
+function assertSafeGitRef(value: string, label: string): string {
+  if (
+    value === ZERO_SHA ||
+    GIT_SHA_RE.test(value) ||
+    SAFE_GIT_REF_RE.test(value)
+  ) {
+    return value;
+  }
+  throw new Error(`Invalid ${label}: "${value}"`);
+}
 
 function assertValidTimezone(timezone: string) {
   try {
@@ -29,9 +51,7 @@ function resolveGitBranchRef(branch: string): string {
 
   for (const candidate of candidates) {
     try {
-      execSync(`git rev-parse --verify ${candidate}^{commit}`, {
-        stdio: "ignore",
-      });
+      runGit(["rev-parse", "--verify", `${candidate}^{commit}`], null);
       return candidate;
     } catch {
       // try next candidate
@@ -42,10 +62,7 @@ function resolveGitBranchRef(branch: string): string {
 }
 
 function readCommitTimestamps(ref: string): CommitTimestamp[] {
-  const output = execSync(`git log ${ref} --first-parent --format=%cI`, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  const output = runGit(["log", ref, "--first-parent", "--format=%cI"]);
 
   return output
     .trim()
@@ -55,10 +72,12 @@ function readCommitTimestamps(ref: string): CommitTimestamp[] {
 }
 
 function readCommitTimestampsInRange(base: string, tip: string): CommitTimestamp[] {
-  const output = execSync(`git log ${base}..${tip} --first-parent --format=%cI`, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  const output = runGit([
+    "log",
+    `${assertSafeGitRef(base, "GIT_PUSH_BASE")}..${assertSafeGitRef(tip, "GIT_PUSH_TIP")}`,
+    "--first-parent",
+    "--format=%cI",
+  ]);
 
   return output
     .trim()
@@ -85,10 +104,14 @@ function assertValidCommitDates(commits: CommitTimestamp[], timezone: string) {
 
 function readCommitTimestampsFromTip(tip: string, count: number): CommitTimestamp[] {
   const limit = Number.isFinite(count) && count > 0 ? count : 1;
-  const output = execSync(`git log ${tip} --first-parent -n ${limit} --format=%cI`, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  const output = runGit([
+    "log",
+    assertSafeGitRef(tip, "GIT_PUSH_TIP"),
+    "--first-parent",
+    "-n",
+    String(limit),
+    "--format=%cI",
+  ]);
 
   return output
     .trim()
