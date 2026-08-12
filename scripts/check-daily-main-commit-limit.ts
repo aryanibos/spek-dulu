@@ -83,6 +83,42 @@ function assertValidCommitDates(commits: CommitTimestamp[], timezone: string) {
   }
 }
 
+function readCommitTimestampsFromTip(tip: string, count: number): CommitTimestamp[] {
+  const limit = Number.isFinite(count) && count > 0 ? count : 1;
+  const output = execSync(`git log ${tip} --first-parent -n ${limit} --format=%cI`, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  return output
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((iso) => ({ committedAt: new Date(iso) }));
+}
+
+function readZeroBasePushCommits(): CommitTimestamp[] {
+  const pushTip = process.env.GIT_PUSH_TIP;
+  if (!pushTip) {
+    return [];
+  }
+
+  const pushBase = process.env.GIT_PUSH_BASE;
+  if (pushBase && pushBase !== ZERO_SHA) {
+    return [];
+  }
+
+  const rawCount = process.env.GIT_PUSH_COMMIT_COUNT ?? "1";
+  const count = Number.parseInt(rawCount, 10);
+  if (!Number.isFinite(count) || count < 1) {
+    throw new Error(
+      `GIT_PUSH_COMMIT_COUNT must be a positive integer, got "${rawCount}"`,
+    );
+  }
+
+  return readCommitTimestampsFromTip(pushTip, count);
+}
+
 function readPushRangeCommits(): CommitTimestamp[] {
   const pushTip = process.env.GIT_PUSH_TIP;
   if (!pushTip) {
@@ -91,7 +127,7 @@ function readPushRangeCommits(): CommitTimestamp[] {
 
   const pushBase = process.env.GIT_PUSH_BASE;
   // Zero/empty base (new branch, force-push recreate) — range unknown; caller
-  // falls back to tip-only retrospective validation instead of full history.
+  // falls back to zero-base tip validation instead of full history.
   if (!pushBase || pushBase === ZERO_SHA) {
     return [];
   }
@@ -126,6 +162,12 @@ function validateRetrospectiveCommitDates(
   const pushCommits = readPushRangeCommits();
   if (pushCommits.length > 0) {
     assertValidCommitDates(pushCommits, timezone);
+    return;
+  }
+
+  const zeroBaseCommits = readZeroBasePushCommits();
+  if (zeroBaseCommits.length > 0) {
+    assertValidCommitDates(zeroBaseCommits, timezone);
     return;
   }
 

@@ -255,7 +255,9 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         setError(err instanceof Error ? err.message : "Visual design update failed.");
       }
     } finally {
-      setBusy(false);
+      if (isActiveProject(opProjectId)) {
+        setBusy(false);
+      }
     }
   }
 
@@ -282,7 +284,9 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         setError(err instanceof Error ? err.message : "Validation failed.");
       }
     } finally {
-      setBusy(false);
+      if (isActiveProject(opProjectId)) {
+        setBusy(false);
+      }
     }
   }
 
@@ -361,7 +365,9 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         setError(err instanceof Error ? err.message : "Refine failed.");
       }
     } finally {
-      setBusy(false);
+      if (isActiveProject(opProjectId)) {
+        setBusy(false);
+      }
     }
   }
 
@@ -391,7 +397,9 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         setError(err instanceof Error ? err.message : "Restore failed.");
       }
     } finally {
-      setBusy(false);
+      if (isActiveProject(opProjectId)) {
+        setBusy(false);
+      }
     }
   }
 

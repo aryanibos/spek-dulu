@@ -40,14 +40,16 @@ function decodeUrlEntities(url: string): string {
 function normalizeUrlForSchemeCheck(url: string): string {
   let normalized = decodeUrlEntities(url)
     .replace(ZERO_WIDTH_CHARS, "")
+    .replace(/[\0\r]/g, "")
     .trim()
     .replace(/^['"]|['"]$/g, "")
     .replace(/\s+/g, "");
 
-  for (let round = 0; round < 2; round++) {
+  for (let round = 0; round < 4; round++) {
     try {
       const decoded = decodeURIComponent(normalized)
         .replace(ZERO_WIDTH_CHARS, "")
+        .replace(/[\0\r]/g, "")
         .replace(/\s+/g, "");
       if (decoded === normalized) break;
       normalized = decoded;

@@ -379,6 +379,14 @@ describe("markdown sanitization", () => {
     expect(output).toContain("#blocked-scheme");
   });
 
+  it("neutralizes null-byte, double-encoded, and CR-split URL schemes", () => {
+    const input =
+      "[x](java%00script:alert(1)) [y](java%2500script:alert(1)) [z](java\rscript:alert(1))";
+    const output = stripDangerousMarkdown(input);
+    expect(output).not.toContain("alert(1)");
+    expect(output).toContain("#blocked-scheme");
+  });
+
   it("neutralizes autolink and encoded href dangerous schemes", () => {
     const input =
       "<javascript:alert(1)> <a href=\"%6aavascript:alert(1)\">x</a> [ok](https://example.com)";

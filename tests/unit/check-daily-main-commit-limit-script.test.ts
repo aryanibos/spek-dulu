@@ -57,4 +57,19 @@ describe("check-daily-main-commit-limit script", () => {
 
     expect(result.status).toBe(1);
   });
+
+  it("validates multiple commits on zero-base retrospective push", () => {
+    const result = runCommitLimitCheck({
+      GIT_BRANCH: "origin/main",
+      GIT_PUSH_TIP: "origin/main",
+      GIT_PUSH_BASE: ZERO_SHA,
+      GIT_PUSH_COMMIT_COUNT: "2",
+      RETROSPECTIVE_CHECK: "1",
+      COMMIT_LIMIT_TZ: "Asia/Jakarta",
+      MAIN_DAILY_COMMIT_LIMIT: "5",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.output).toContain("/5 commit ke main hari ini");
+  });
 });
