@@ -66,6 +66,16 @@ describe("api guard", () => {
     expect(isSameOriginApiRequest(request)).toBe(false);
   });
 
+  it("rejects spoofed Origin when Sec-Fetch-Site is cross-site", () => {
+    const request = makeRequest("https://spekdulu.example/api/interview", {
+      host: "spekdulu.example",
+      origin: "https://spekdulu.example",
+      "sec-fetch-site": "cross-site",
+    });
+
+    expect(isSameOriginApiRequest(request)).toBe(false);
+  });
+
   it("rejects requests without origin signals", () => {
     const request = makeRequest("https://spekdulu.example/api/interview", {
       host: "spekdulu.example",

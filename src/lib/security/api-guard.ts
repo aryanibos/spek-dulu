@@ -9,6 +9,9 @@ export function isSameOriginApiRequest(request: NextRequest): boolean {
   if (secFetchSite === "same-origin") {
     return true;
   }
+  if (secFetchSite) {
+    return false;
+  }
 
   const host = request.headers.get("host");
   if (!host) {
