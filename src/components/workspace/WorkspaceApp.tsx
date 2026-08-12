@@ -251,7 +251,9 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
       await persist(next);
       if (action === "revise") setVisualInstruction("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Visual design update failed.");
+      if (isActiveProject(opProjectId)) {
+        setError(err instanceof Error ? err.message : "Visual design update failed.");
+      }
     } finally {
       setBusy(false);
     }
@@ -276,7 +278,9 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
       if (latest.id !== opProjectId) return;
       await persist({ ...latest, coherence: data, updatedAt: new Date().toISOString() });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Validation failed.");
+      if (isActiveProject(opProjectId)) {
+        setError(err instanceof Error ? err.message : "Validation failed.");
+      }
     } finally {
       setBusy(false);
     }
@@ -353,7 +357,9 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
       await persist(next);
       setChatInput("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Refine failed.");
+      if (isActiveProject(opProjectId)) {
+        setError(err instanceof Error ? err.message : "Refine failed.");
+      }
     } finally {
       setBusy(false);
     }
@@ -381,7 +387,9 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
       );
       await persist(enrichBlueprint({ ...current, documents: updatedDocs }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Restore failed.");
+      if (isActiveProject(opProjectId)) {
+        setError(err instanceof Error ? err.message : "Restore failed.");
+      }
     } finally {
       setBusy(false);
     }

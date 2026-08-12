@@ -9,32 +9,7 @@ export function isSameOriginApiRequest(request: NextRequest): boolean {
   if (secFetchSite === "same-origin") {
     return true;
   }
-  if (secFetchSite) {
-    return false;
-  }
-
-  const host = request.headers.get("host");
-  if (!host) {
-    return false;
-  }
-
-  const origin = request.headers.get("origin");
-  if (origin) {
-    try {
-      return new URL(origin).host === host;
-    } catch {
-      return false;
-    }
-  }
-
-  const referer = request.headers.get("referer");
-  if (referer) {
-    try {
-      return new URL(referer).host === host;
-    } catch {
-      return false;
-    }
-  }
-
+  // Reject cross-site and same-site fetches; do not trust Origin/Referer alone
+  // because non-browser clients can spoof them and abuse Gemini-backed routes.
   return false;
 }

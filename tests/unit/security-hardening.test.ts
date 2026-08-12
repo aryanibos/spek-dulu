@@ -362,7 +362,8 @@ describe("markdown sanitization", () => {
   });
 
   it("neutralizes entity-encoded dangerous URL schemes in markdown links", () => {
-    const input = "[x](javascript&#58;alert(1)) [y](javascript&#x3a;alert(1))";
+    const input =
+      "[x](javascript&#58;alert(1)) [y](javascript&#x3a;alert(1)) [z](javascript&Colon;alert(1))";
     const output = stripDangerousMarkdown(input);
     expect(output).not.toContain("javascript");
     expect(output).not.toContain("alert(1)");

@@ -23,8 +23,14 @@ const DANGEROUS_INLINE_LINK =
 
 const ZERO_WIDTH_CHARS = /[\u200B-\u200D\uFEFF]/g;
 
+const NAMED_URL_ENTITY: Record<string, string> = {
+  colon: ":",
+  Colon: ":",
+};
+
 function decodeUrlEntities(url: string): string {
   return url
+    .replace(/&([a-zA-Z]+);/g, (match, name: string) => NAMED_URL_ENTITY[name] ?? match)
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
       String.fromCharCode(Number.parseInt(hex, 16)),
     )

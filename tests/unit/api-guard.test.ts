@@ -29,15 +29,6 @@ describe("api guard", () => {
     expect(shouldGuardApiRoutes()).toBe(true);
   });
 
-  it("accepts same-origin requests via Origin header", () => {
-    const request = makeRequest("https://spekdulu.example/api/interview", {
-      host: "spekdulu.example",
-      origin: "https://spekdulu.example",
-    });
-
-    expect(isSameOriginApiRequest(request)).toBe(true);
-  });
-
   it("accepts same-origin requests via Sec-Fetch-Site", () => {
     const request = makeRequest("https://spekdulu.example/api/interview", {
       host: "spekdulu.example",
@@ -47,13 +38,22 @@ describe("api guard", () => {
     expect(isSameOriginApiRequest(request)).toBe(true);
   });
 
-  it("accepts same-origin requests via Referer header", () => {
+  it("rejects Origin-only requests without Sec-Fetch-Site", () => {
+    const request = makeRequest("https://spekdulu.example/api/interview", {
+      host: "spekdulu.example",
+      origin: "https://spekdulu.example",
+    });
+
+    expect(isSameOriginApiRequest(request)).toBe(false);
+  });
+
+  it("rejects Referer-only requests without Sec-Fetch-Site", () => {
     const request = makeRequest("https://spekdulu.example/api/blueprint", {
       host: "spekdulu.example",
       referer: "https://spekdulu.example/workspace/project_1",
     });
 
-    expect(isSameOriginApiRequest(request)).toBe(true);
+    expect(isSameOriginApiRequest(request)).toBe(false);
   });
 
   it("rejects cross-origin requests", () => {
