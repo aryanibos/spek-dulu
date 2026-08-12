@@ -22,6 +22,49 @@ describe("blueprint API payload", () => {
     expect(payload.documents).toEqual(bp.documents);
   });
 
+  it("strips document bodies for visual-design API payloads", () => {
+    const bp = enrichBlueprint(buildDemoBlueprint("A todo app for students", {}));
+    const heavy = enrichBlueprint({
+      ...bp,
+      documents: bp.documents.map((doc) => ({
+        ...doc,
+        content: "x".repeat(MAX_DOC_CONTENT),
+      })),
+    });
+
+    const apiJson = serializeBlueprintForApi(heavy, { stripDocumentContent: true });
+    expect(apiJson.length).toBeLessThan(500_000);
+    expect(JSON.parse(apiJson).documents.every((doc: { content: string }) => doc.content === "")).toBe(
+      true,
+    );
+  });
+
+  it("keeps only the refined document body in refine API payloads", () => {
+    const bp = enrichBlueprint(buildDemoBlueprint("A todo app for students", {}));
+    const heavy = enrichBlueprint({
+      ...bp,
+      documents: bp.documents.map((doc) => ({
+        ...doc,
+        content: "x".repeat(MAX_DOC_CONTENT),
+      })),
+    });
+    const target = heavy.documents[0]!;
+
+    const apiJson = serializeBlueprintForApi(heavy, {
+      keepDocumentFileName: target.fileName,
+    });
+    expect(apiJson.length).toBeLessThan(500_000);
+
+    const parsed = JSON.parse(apiJson) as { documents: Array<{ fileName: string; content: string }> };
+    for (const doc of parsed.documents) {
+      if (doc.fileName === target.fileName) {
+        expect(doc.content.length).toBe(MAX_DOC_CONTENT);
+      } else {
+        expect(doc.content).toBe("");
+      }
+    }
+  });
+
   it("keeps refine requests under the blueprintJson cap with heavy version and chat history", () => {
     const bp = enrichBlueprint(buildDemoBlueprint("A todo app for students", {}));
     const heavy = enrichBlueprint({

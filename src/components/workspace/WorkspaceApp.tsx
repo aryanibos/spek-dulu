@@ -40,7 +40,7 @@ async function fetchDesignSuggestions(bp: ProjectBlueprint): Promise<DesignSugge
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       action: "suggest",
-      blueprintJson: serializeBlueprintForApi(bp),
+      blueprintJson: serializeBlueprintForApi(bp, { stripDocumentContent: true }),
       originalityMode: bp.visual?.originalityMode ?? "Inspired",
     }),
   });
@@ -222,7 +222,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action,
-          blueprintJson: serializeBlueprintForApi(current),
+          blueprintJson: serializeBlueprintForApi(current, { stripDocumentContent: true }),
           originalityMode: visualMode,
           presetId: extra?.presetId,
           instruction: extra?.instruction,
@@ -299,7 +299,9 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
           projectId: current.id,
           fileName: activeDoc.fileName,
           userQuery: chatInput,
-          blueprintJson: serializeBlueprintForApi(current),
+          blueprintJson: serializeBlueprintForApi(current, {
+            keepDocumentFileName: activeDoc.fileName,
+          }),
         }),
       });
       const data = await res.json();
