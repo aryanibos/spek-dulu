@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 /** Routes that fetch arbitrary public URLs — always require same-origin even in demo mode. */
 const ALWAYS_GUARDED_API_PATHS = new Set([
   "/api/analyze-url",
+  "/api/blueprint",
   "/api/visual-design",
 ]);
 
@@ -10,8 +11,15 @@ export function shouldGuardApiRoutes(): boolean {
   return Boolean(process.env.GEMINI_API_KEY?.trim());
 }
 
+export function normalizeApiPathname(pathname: string): string {
+  if (pathname.length > 1 && pathname.endsWith("/")) {
+    return pathname.slice(0, -1);
+  }
+  return pathname;
+}
+
 export function shouldAlwaysGuardApiPath(pathname: string): boolean {
-  return ALWAYS_GUARDED_API_PATHS.has(pathname);
+  return ALWAYS_GUARDED_API_PATHS.has(normalizeApiPathname(pathname));
 }
 
 export function isSameOriginApiRequest(request: NextRequest): boolean {

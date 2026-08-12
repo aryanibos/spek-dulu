@@ -32,7 +32,11 @@ describe("api guard", () => {
 
   it("always guards URL-fetch API paths even without GEMINI_API_KEY", () => {
     expect(shouldAlwaysGuardApiPath("/api/analyze-url")).toBe(true);
+    expect(shouldAlwaysGuardApiPath("/api/analyze-url/")).toBe(true);
+    expect(shouldAlwaysGuardApiPath("/api/blueprint")).toBe(true);
+    expect(shouldAlwaysGuardApiPath("/api/blueprint/")).toBe(true);
     expect(shouldAlwaysGuardApiPath("/api/visual-design")).toBe(true);
+    expect(shouldAlwaysGuardApiPath("/api/visual-design/")).toBe(true);
     expect(shouldAlwaysGuardApiPath("/api/interview")).toBe(false);
   });
 

@@ -444,6 +444,22 @@ describe("markdown sanitization", () => {
     expect(sanitizeExportHeading("Evil\n# injected")).toBe("Evil # injected");
     expect(sanitizeExportFilename("../../Evil Product")).toBe("evil-product");
   });
+
+  it("blocks markdown heading injection in generated docs", () => {
+    const blueprint = buildDemoBlueprint("Safe product", {
+      user: "Solo shop owner",
+      job: "Record debt",
+      auth: "demo_profile",
+      data: "local_demo",
+      constraint: "Three screens max",
+    });
+    blueprint.decisions.productName = "Evil\n# Injected heading";
+
+    const enriched = enrichBlueprint(blueprint);
+    const prd = enriched.documents.find((d) => d.key === "01_PRD");
+    expect(prd?.content).toContain("Evil # Injected heading");
+    expect(prd?.content).not.toMatch(/\n# Injected heading/);
+  });
 });
 
 describe("Cursor skill export safety", () => {
