@@ -9,4 +9,10 @@ describe("pre-push hook", () => {
       /read -r _ local_ref local_sha remote_ref remote_sha/,
     );
   });
+
+  it("always compares pushes against fetched remote main", () => {
+    const hook = readFileSync(".githooks/pre-push", "utf8");
+    expect(hook).toMatch(/export GIT_PUSH_BASE="\$remote_main"/);
+    expect(hook).not.toMatch(/export GIT_PUSH_BASE=""/);
+  });
 });

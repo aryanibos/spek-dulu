@@ -90,9 +90,12 @@ function readPushRangeCommits(): CommitTimestamp[] {
   }
 
   const pushBase = process.env.GIT_PUSH_BASE;
-  return !pushBase || pushBase === ZERO_SHA
-    ? readCommitTimestamps(pushTip)
-    : readCommitTimestampsInRange(pushBase, pushTip);
+  // Zero/empty base (new branch, force-push recreate) — range unknown; caller
+  // falls back to tip-only retrospective validation instead of full history.
+  if (!pushBase || pushBase === ZERO_SHA) {
+    return [];
+  }
+  return readCommitTimestampsInRange(pushBase, pushTip);
 }
 
 function readPendingMainCommits(timezone: string) {

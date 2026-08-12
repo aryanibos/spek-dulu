@@ -26,14 +26,8 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 
   export COMMIT_LIMIT_TZ="Asia/Jakarta"
   export GIT_PUSH_TIP="$local_sha"
-
-  if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
-    export GIT_BRANCH=""
-    export GIT_PUSH_BASE=""
-  else
-    export GIT_BRANCH="$remote_main"
-    export GIT_PUSH_BASE="$remote_main"
-  fi
+  export GIT_BRANCH="$remote_main"
+  export GIT_PUSH_BASE="$remote_main"
 
   unset PENDING_MAIN_COMMITS
   npm run --silent check:main-commit-limit
