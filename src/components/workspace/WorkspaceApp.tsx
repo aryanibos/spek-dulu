@@ -298,7 +298,6 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         body: JSON.stringify({
           projectId: current.id,
           fileName: activeDoc.fileName,
-          currentContent: activeDoc.content,
           userQuery: chatInput,
           blueprintJson: serializeBlueprintForApi(current),
         }),

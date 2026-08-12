@@ -17,7 +17,42 @@ describe("blueprint API payload", () => {
     const payload = blueprintForApiPayload(bp);
     expect(payload.artifacts).toEqual([]);
     expect(payload.coherence).toBeUndefined();
+    expect(payload.chat).toEqual([]);
+    expect(payload.versions).toEqual([]);
     expect(payload.documents).toEqual(bp.documents);
+  });
+
+  it("keeps refine requests under the blueprintJson cap with heavy version and chat history", () => {
+    const bp = enrichBlueprint(buildDemoBlueprint("A todo app for students", {}));
+    const heavy = enrichBlueprint({
+      ...bp,
+      versions: Array.from({ length: 10 }, (_, index) => ({
+        id: `ver_${index}`,
+        documentKey: "prd" as const,
+        content: "v".repeat(40_000),
+        summary: "Snapshot",
+        createdAt: new Date().toISOString(),
+      })),
+      chat: Array.from({ length: 50 }, (_, index) => ({
+        id: `msg_${index}`,
+        role: "user" as const,
+        text: "c".repeat(3_000),
+        createdAt: new Date().toISOString(),
+      })),
+    });
+
+    const fullJson = JSON.stringify(heavy);
+    const apiJson = serializeBlueprintForApi(heavy);
+    expect(fullJson.length).toBeGreaterThan(500_000);
+    expect(apiJson.length).toBeLessThan(500_000);
+
+    const refinePayload = refineRequestSchema.safeParse({
+      projectId: heavy.id,
+      fileName: heavy.documents[0]!.fileName,
+      userQuery: "Tighten scope",
+      blueprintJson: apiJson,
+    });
+    expect(refinePayload.success).toBe(true);
   });
 
   it("keeps refine/visual requests under the blueprintJson cap when docs are large", () => {
@@ -38,7 +73,6 @@ describe("blueprint API payload", () => {
     const refinePayload = refineRequestSchema.safeParse({
       projectId: heavy.id,
       fileName: heavy.documents[0]!.fileName,
-      currentContent: heavy.documents[0]!.content,
       userQuery: "Tighten scope",
       blueprintJson: apiJson,
     });

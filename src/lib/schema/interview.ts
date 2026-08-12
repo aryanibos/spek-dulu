@@ -47,7 +47,8 @@ export const blueprintRequestSchema = z
 export const refineRequestSchema = z.object({
   projectId: z.string(),
   fileName: documentFileNameSchema,
-  currentContent: z.string().max(120_000),
+  /** Ignored by server; kept optional for backward compatibility. */
+  currentContent: z.string().max(120_000).optional(),
   userQuery: z.string().min(3).max(2000),
   blueprintJson: z.string().max(500_000),
 });

@@ -6,6 +6,8 @@ export function blueprintForApiPayload(bp: ProjectBlueprint): ProjectBlueprint {
     ...bp,
     artifacts: [],
     coherence: undefined,
+    chat: [],
+    versions: [],
   };
 }
 
