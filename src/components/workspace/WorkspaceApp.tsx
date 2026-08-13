@@ -582,7 +582,9 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
                     <Button
                       variant="secondary"
                       onClick={async () => {
-                        await navigator.clipboard.writeText(activeDoc.content);
+                        await navigator.clipboard.writeText(
+                          stripDangerousMarkdown(activeDoc.content),
+                        );
                         setCopied("doc");
                         setTimeout(() => setCopied(null), 1200);
                       }}

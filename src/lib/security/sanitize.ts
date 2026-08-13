@@ -65,6 +65,12 @@ function hasDangerousUrlScheme(url: string): boolean {
   return DANGEROUS_URL_SCHEME.test(normalizeUrlForSchemeCheck(url));
 }
 
+function sanitizeStyleAttributeValue(value: string): string {
+  return value.replace(/url\s*\(\s*([^)]+)\s*\)/gi, (match, url: string) =>
+    hasDangerousUrlScheme(url) ? "url(#blocked-scheme)" : match,
+  );
+}
+
 const DANGEROUS_HTML_TAGS =
   "iframe|object|embed|svg|meta|link|style|base|body|video|audio|form";
 
@@ -94,6 +100,18 @@ export function stripDangerousMarkdown(input: string): string {
       (match, attrPrefix: string, _quoted?: string, dbl?: string, sng?: string, bare?: string) => {
         const url = dbl ?? sng ?? bare ?? "";
         return hasDangerousUrlScheme(url) ? `${attrPrefix}"#blocked-scheme"` : match;
+      },
+    )
+    .replace(
+      /(\sstyle\s*=\s*)("([^"]*)"|'([^']*)')/gi,
+      (match, attrPrefix: string, _quoted?: string, dbl?: string, sng?: string) => {
+        const styleValue = dbl ?? sng ?? "";
+        const sanitized = sanitizeStyleAttributeValue(styleValue);
+        if (sanitized === styleValue) {
+          return match;
+        }
+        const quote = dbl !== undefined ? '"' : "'";
+        return `${attrPrefix}${quote}${sanitized}${quote}`;
       },
     );
 }
