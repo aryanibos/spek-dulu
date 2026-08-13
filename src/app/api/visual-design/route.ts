@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { projectBlueprintSchema, visualDesignRequestSchema } from "@/lib/schema";
+import { apiErrorStatus, readJsonBody } from "@/lib/security/read-json-body";
 import { analyzeReferenceUrl } from "@/lib/visual/analyze-url";
 import {
   listDesignSuggestions,
@@ -12,7 +13,7 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
-    const body = visualDesignRequestSchema.parse(await request.json());
+    const body = visualDesignRequestSchema.parse(await readJsonBody(request));
     const blueprint = projectBlueprintSchema.parse(JSON.parse(body.blueprintJson));
     const mode = body.originalityMode ?? blueprint.visual?.originalityMode ?? "Inspired";
     const suggestions = listDesignSuggestions(blueprint);
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Visual design update failed." },
-      { status: 400 },
+      { status: apiErrorStatus(error) },
     );
   }
 }

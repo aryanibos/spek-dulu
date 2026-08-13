@@ -271,7 +271,9 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
       const res = await fetch("/api/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blueprintJson: serializeBlueprintForApi(current) }),
+        body: JSON.stringify({
+          blueprintJson: serializeBlueprintForApi(current, { stripDocumentContent: true }),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Validation failed.");

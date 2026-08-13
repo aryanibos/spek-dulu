@@ -3,6 +3,7 @@ import { getAiProvider } from "@/lib/ai";
 import { resolveRefineSourceContent } from "@/lib/artifacts/documents";
 import { MAX_DOC_CONTENT, MAX_VERSION_SUMMARY } from "@/lib/schema/limits";
 import { projectBlueprintSchema, refineRequestSchema } from "@/lib/schema";
+import { apiErrorStatus, readJsonBody } from "@/lib/security/read-json-body";
 import { stripDangerousMarkdown } from "@/lib/security/sanitize";
 import { createId } from "@/lib/utils";
 
@@ -11,7 +12,7 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
-    const body = refineRequestSchema.parse(await request.json());
+    const body = refineRequestSchema.parse(await readJsonBody(request));
     const blueprint = projectBlueprintSchema.parse(JSON.parse(body.blueprintJson));
     const provider = getAiProvider();
     const result = await provider.refineDocument({
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Refine failed." },
-      { status: 400 },
+      { status: apiErrorStatus(error) },
     );
   }
 }

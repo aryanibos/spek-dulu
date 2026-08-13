@@ -3,6 +3,7 @@ import { getAiProvider } from "@/lib/ai";
 import { enrichBlueprint } from "@/lib/artifacts/render";
 import { validateBlueprint } from "@/lib/coherence/validate";
 import { blueprintRequestSchema, projectBlueprintSchema } from "@/lib/schema";
+import { apiErrorStatus, readJsonBody } from "@/lib/security/read-json-body";
 import { analyzeReferenceUrl } from "@/lib/visual/analyze-url";
 
 export const runtime = "nodejs";
@@ -10,7 +11,7 @@ export const maxDuration = 120;
 
 export async function POST(request: Request) {
   try {
-    const body = blueprintRequestSchema.parse(await request.json());
+    const body = blueprintRequestSchema.parse(await readJsonBody(request));
     const provider = getAiProvider();
     let blueprint = await provider.generateBlueprint(body.idea, body.answers, {
       originalityMode: body.originalityMode,
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
       {
         error: error instanceof Error ? error.message : "Failed to generate blueprint.",
       },
-      { status: 400 },
+      { status: apiErrorStatus(error) },
     );
   }
 }

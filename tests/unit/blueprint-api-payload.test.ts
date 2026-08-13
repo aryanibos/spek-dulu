@@ -5,7 +5,7 @@ import {
   blueprintForApiPayload,
   serializeBlueprintForApi,
 } from "@/lib/blueprint/api-payload";
-import { artifactSchema, projectBlueprintSchema, refineRequestSchema } from "@/lib/schema";
+import { artifactSchema, projectBlueprintSchema, refineRequestSchema, validateRequestSchema } from "@/lib/schema";
 import { MAX_ARTIFACT_CONTENT, MAX_DOC_CONTENT } from "@/lib/schema/limits";
 
 describe("blueprint API payload", () => {
@@ -20,6 +20,21 @@ describe("blueprint API payload", () => {
     expect(payload.chat).toEqual([]);
     expect(payload.versions).toEqual([]);
     expect(payload.documents).toEqual(bp.documents);
+  });
+
+  it("strips document bodies for validate API payloads", () => {
+    const bp = enrichBlueprint(buildDemoBlueprint("A todo app for students", {}));
+    const heavy = enrichBlueprint({
+      ...bp,
+      documents: bp.documents.map((doc) => ({
+        ...doc,
+        content: "x".repeat(MAX_DOC_CONTENT),
+      })),
+    });
+
+    const apiJson = serializeBlueprintForApi(heavy, { stripDocumentContent: true });
+    expect(apiJson.length).toBeLessThan(500_000);
+    expect(validateRequestSchema.safeParse({ blueprintJson: apiJson }).success).toBe(true);
   });
 
   it("strips document bodies for visual-design API payloads", () => {
