@@ -3,21 +3,32 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const ZERO_SHA = "0000000000000000000000000000000000000000";
 
-function createTodayTipRef(commitCount = 1): string {
-  const ref = "refs/heads/test-commit-limit-tip";
+function createTodayCommitsOnBase(baseRef: string, commitCount: number): string {
+  let parent = execSync(`git rev-parse ${baseRef}^{commit}`, { encoding: "utf8" }).trim();
   const nowIso = execSync("TZ=Asia/Jakarta date -Iseconds", { encoding: "utf8" }).trim();
+  const tree = execSync(`git rev-parse ${parent}^{tree}`, { encoding: "utf8" }).trim();
+
   for (let index = 0; index < commitCount; index += 1) {
-    execSync(`git commit --allow-empty -m "commit-limit script test tip ${index + 1}"`, {
-      env: {
-        ...process.env,
-        GIT_AUTHOR_DATE: nowIso,
-        GIT_COMMITTER_DATE: nowIso,
+    parent = execSync(
+      `git commit-tree ${tree} -p ${parent} -m "commit-limit script test tip ${index + 1}"`,
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_DATE: nowIso,
+          GIT_COMMITTER_DATE: nowIso,
+        },
       },
-    });
+    ).trim();
   }
-  const sha = execSync("git rev-parse HEAD", { encoding: "utf8" }).trim();
-  execSync(`git update-ref ${ref} ${sha}`);
+
+  const ref = `refs/heads/test-commit-limit-${commitCount}-${parent.slice(0, 8)}`;
+  execSync(`git update-ref ${ref} ${parent}`);
   return ref;
+}
+
+function createTodayTipRef(commitCount = 1): string {
+  return createTodayCommitsOnBase("HEAD", commitCount);
 }
 
 function runCommitLimitCheck(env: Record<string, string>): {
@@ -52,17 +63,22 @@ describe("check-daily-main-commit-limit script", () => {
   let todayTipRef = "HEAD";
   let todayMultiTipRef = "HEAD";
   let originalHead = "";
+  let preTodayBase = "";
 
   beforeAll(() => {
     originalHead = execSync("git rev-parse HEAD", { encoding: "utf8" }).trim();
-    todayTipRef = createTodayTipRef(1);
-    todayMultiTipRef = createTodayTipRef(2);
+    preTodayBase = execSync("git rev-parse e1020c0", { encoding: "utf8" }).trim();
+    todayTipRef = createTodayCommitsOnBase(preTodayBase, 1);
+    todayMultiTipRef = createTodayCommitsOnBase(preTodayBase, 2);
   });
 
   afterAll(() => {
-    execSync("git update-ref -d refs/heads/test-commit-limit-tip", { stdio: "ignore" });
+    execSync("git for-each-ref --format='%(refname)' refs/heads/test-commit-limit- | xargs -r -n1 git update-ref -d", {
+      stdio: "ignore",
+      shell: "/bin/bash",
+    });
     if (originalHead) {
-      execSync(`git reset --hard ${originalHead}`, { stdio: "ignore" });
+      execSync(`git checkout ${originalHead}`, { stdio: "ignore" });
     }
   });
 
@@ -105,6 +121,33 @@ describe("check-daily-main-commit-limit script", () => {
 
     expect(result.status).toBe(0);
     expect(result.output).toContain("/5 commit ke main hari ini");
+  });
+
+  it("counts zero-base push commits toward pending quota without PENDING_MAIN_COMMITS", () => {
+    const fourTodayRef = createTodayCommitsOnBase(preTodayBase, 4);
+    const twoCommitTipRef = createTodayCommitsOnBase(preTodayBase, 2);
+
+    const blocked = runCommitLimitCheck({
+      GIT_BRANCH: fourTodayRef,
+      GIT_PUSH_TIP: twoCommitTipRef,
+      GIT_PUSH_BASE: ZERO_SHA,
+      GIT_PUSH_COMMIT_COUNT: "2",
+      COMMIT_LIMIT_TZ: "Asia/Jakarta",
+      MAIN_DAILY_COMMIT_LIMIT: "5",
+    });
+    expect(blocked.status).toBe(1);
+    expect(blocked.output).toContain("6/5");
+
+    const atQuota = runCommitLimitCheck({
+      GIT_BRANCH: fourTodayRef,
+      GIT_PUSH_TIP: todayTipRef,
+      GIT_PUSH_BASE: ZERO_SHA,
+      GIT_PUSH_COMMIT_COUNT: "1",
+      COMMIT_LIMIT_TZ: "Asia/Jakarta",
+      MAIN_DAILY_COMMIT_LIMIT: "5",
+    });
+    expect(atQuota.status).toBe(0);
+    expect(atQuota.output).toContain("Sisa 0");
   });
 
   it("rejects shell metacharacters in GIT_PUSH_TIP", () => {

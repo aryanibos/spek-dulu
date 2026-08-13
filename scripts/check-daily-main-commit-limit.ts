@@ -175,6 +175,12 @@ function readPendingMainCommits(timezone: string) {
     return commits.length;
   }
 
+  const zeroBaseCommits = readZeroBasePushCommits();
+  if (zeroBaseCommits.length > 0) {
+    assertValidCommitDates(zeroBaseCommits, timezone);
+    return zeroBaseCommits.length;
+  }
+
   return 0;
 }
 
