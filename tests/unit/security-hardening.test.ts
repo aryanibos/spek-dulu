@@ -422,11 +422,12 @@ describe("markdown sanitization", () => {
 
   it("neutralizes dangerous URL schemes in inline style attributes", () => {
     const input =
-      '<div style="background:url(javascript:alert(1))">x</div><span style=\'list-style-image:url(data:text/html,test)\'>y</span>';
+      '<div style="background:url(javascript:alert(1))">x</div><span style=\'list-style-image:url(data:text/html,test)\'>y</span><p style=background:url(javascript:alert(1))>z</p>';
     const output = stripDangerousMarkdown(input);
     expect(output).not.toContain("javascript:");
     expect(output).not.toContain("data:text/html");
     expect(output).toContain("url(#blocked-scheme)");
+    expect(output).toMatch(/<p style="background:url\(#blocked-scheme\)/);
   });
 
   it("neutralizes file and blob URL schemes in markdown links", () => {

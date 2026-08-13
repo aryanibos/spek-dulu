@@ -103,14 +103,14 @@ export function stripDangerousMarkdown(input: string): string {
       },
     )
     .replace(
-      /(\sstyle\s*=\s*)("([^"]*)"|'([^']*)')/gi,
-      (match, attrPrefix: string, _quoted?: string, dbl?: string, sng?: string) => {
-        const styleValue = dbl ?? sng ?? "";
+      /(\sstyle\s*=\s*)("([^"]*)"|'([^']*)'|([^\s>]+))/gi,
+      (match, attrPrefix: string, _quoted?: string, dbl?: string, sng?: string, bare?: string) => {
+        const styleValue = dbl ?? sng ?? bare ?? "";
         const sanitized = sanitizeStyleAttributeValue(styleValue);
         if (sanitized === styleValue) {
           return match;
         }
-        const quote = dbl !== undefined ? '"' : "'";
+        const quote = bare !== undefined ? '"' : dbl !== undefined ? '"' : "'";
         return `${attrPrefix}${quote}${sanitized}${quote}`;
       },
     );
