@@ -408,6 +408,7 @@ describe("markdown sanitization", () => {
   it("strips unicode line separators from export headings and YAML scalars", () => {
     expect(sanitizeExportHeading("Evil\u2028# injected")).toBe("Evil # injected");
     expect(sanitizeYamlScalar("Evil\u2029name: attacker")).toBe('"Evil name: attacker"');
+    expect(sanitizeYamlScalar("Evil\u0000name: attacker")).toBe('"Evil name: attacker"');
   });
 
   it("neutralizes dangerous href and src attributes in raw HTML", () => {

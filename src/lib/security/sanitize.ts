@@ -13,7 +13,7 @@ export function sanitizeExportFilename(value: string): string {
 }
 
 export function sanitizeYamlScalar(value: string): string {
-  const cleaned = value.replace(/[\r\n\u2028\u2029]/g, " ").trim();
+  const cleaned = value.replace(/[\r\n\0\u2028\u2029]/g, " ").trim();
   return `"${cleaned.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
