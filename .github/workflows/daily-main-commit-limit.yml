@@ -154,7 +154,7 @@ jobs:
           fetch-depth: 0
 
       - name: Fetch latest main
-        run: git fetch origin main:main
+        run: git fetch origin main
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
