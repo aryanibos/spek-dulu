@@ -48,10 +48,22 @@ jobs:
           MAIN_DAILY_COMMIT_LIMIT: "5"
           PENDING_MAIN_COMMITS: ${{ github.event_name == 'pull_request' && '1' || '0' }}
           RETROSPECTIVE_CHECK: ${{ github.event_name == 'push' && '1' || '0' }}
-          GIT_PUSH_TIP: ${{ github.event_name == 'push' && github.sha || '' }}
-          GIT_PUSH_BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
-          GIT_PUSH_COMMIT_COUNT: ${{ github.event_name == 'push' && github.event.commits && github.event.commits.length || '1' }}
-        run: npm run check:main-commit-limit
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            export GIT_PUSH_TIP="${{ github.sha }}"
+            export GIT_PUSH_BASE="${{ github.event.before }}"
+            BEFORE="${{ github.event.before }}"
+            TIP="${{ github.sha }}"
+            ZERO_SHA="0000000000000000000000000000000000000000"
+            if [ -n "$BEFORE" ] && [ "$BEFORE" != "$ZERO_SHA" ]; then
+              export GIT_PUSH_COMMIT_COUNT="$(git rev-list --count "$BEFORE..$TIP")"
+            elif [ "${{ github.event.commits && github.event.commits.length || 0 }}" != "0" ]; then
+              export GIT_PUSH_COMMIT_COUNT="${{ github.event.commits.length }}"
+            else
+              export GIT_PUSH_COMMIT_COUNT="1"
+            fi
+          fi
+          npm run check:main-commit-limit
 
   midnight-merge-cursor-prs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -60,6 +72,7 @@ jobs:
       group: auto-merge-cursor-pr-main
       cancel-in-progress: false
     permissions:
+      actions: write
       contents: write
       pull-requests: write
     steps:
@@ -120,6 +133,27 @@ jobs:
             if [[ "$current_sha" != "$head_sha" ]]; then
               echo "PR #${pr} head moved (${head_sha} -> ${current_sha}); skipping."
               continue
+            fi
+
+            head_branch="$(gh pr view "$pr" --json headRefName -q .headRefName)"
+            failed_run="$(gh run list \
+              --workflow="daily-main-commit-limit.yml" \
+              --branch="$head_branch" \
+              --status=failure \
+              --limit 1 \
+              --json databaseId \
+              --jq '.[0].databaseId // empty' \
+              2>/dev/null || true)"
+            if [[ -n "$failed_run" ]]; then
+              echo "Re-running stale failed limit workflow run ${failed_run} for PR #${pr}..."
+              gh run rerun "$failed_run" || true
+              for _ in $(seq 1 60); do
+                run_status="$(gh run view "$failed_run" --json status -q .status 2>/dev/null || echo completed)"
+                if [[ "$run_status" != "in_progress" && "$run_status" != "queued" && "$run_status" != "waiting" && "$run_status" != "pending" ]]; then
+                  break
+                fi
+                sleep 10
+              done
             fi
 
             if ! gh pr checks "$pr" --required; then
