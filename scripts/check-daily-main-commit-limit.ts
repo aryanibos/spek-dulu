@@ -120,6 +120,20 @@ function readCommitTimestampsFromTip(tip: string, count: number): CommitTimestam
     .map((iso) => ({ committedAt: new Date(iso) }));
 }
 
+function resolveZeroBasePushCommitCount(): number {
+  const rawCount = process.env.GIT_PUSH_COMMIT_COUNT;
+  if (rawCount === undefined) {
+    return 1;
+  }
+  const count = Number.parseInt(rawCount, 10);
+  if (!Number.isFinite(count) || count < 1) {
+    throw new Error(
+      `GIT_PUSH_COMMIT_COUNT must be a positive integer, got "${rawCount}"`,
+    );
+  }
+  return count;
+}
+
 function readZeroBasePushCommits(): CommitTimestamp[] {
   const pushTip = process.env.GIT_PUSH_TIP;
   if (!pushTip) {
@@ -131,14 +145,7 @@ function readZeroBasePushCommits(): CommitTimestamp[] {
     return [];
   }
 
-  const rawCount = process.env.GIT_PUSH_COMMIT_COUNT ?? "1";
-  const count = Number.parseInt(rawCount, 10);
-  if (!Number.isFinite(count) || count < 1) {
-    throw new Error(
-      `GIT_PUSH_COMMIT_COUNT must be a positive integer, got "${rawCount}"`,
-    );
-  }
-
+  const count = resolveZeroBasePushCommitCount();
   return readCommitTimestampsFromTip(pushTip, count);
 }
 

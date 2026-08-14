@@ -171,6 +171,64 @@ describe("check-daily-main-commit-limit script", () => {
     expect(atQuota.output).toContain("Sisa 0");
   });
 
+  it("rejects backdated commits on zero-base push when count matches push size", () => {
+    const yesterdayIso = execSync("TZ=Asia/Jakarta date -Iseconds -d 'yesterday'", {
+      encoding: "utf8",
+    }).trim();
+    let parent = execSync(`git rev-parse ${preTodayBase}^{commit}`, {
+      encoding: "utf8",
+    }).trim();
+    const tree = execSync(`git rev-parse ${parent}^{tree}`, { encoding: "utf8" }).trim();
+
+    parent = execSync(
+      `git commit-tree ${tree} -p ${parent} -m "commit-limit backdated push commit"`,
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_DATE: yesterdayIso,
+          GIT_COMMITTER_DATE: yesterdayIso,
+        },
+      },
+    ).trim();
+
+    const nowIso = execSync("TZ=Asia/Jakarta date -Iseconds", { encoding: "utf8" }).trim();
+    const tip = execSync(
+      `git commit-tree ${tree} -p ${parent} -m "commit-limit today push commit"`,
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_DATE: nowIso,
+          GIT_COMMITTER_DATE: nowIso,
+        },
+      },
+    ).trim();
+
+    const onlyTip = runCommitLimitCheck({
+      GIT_BRANCH: "origin/main",
+      GIT_PUSH_TIP: tip,
+      GIT_PUSH_BASE: ZERO_SHA,
+      GIT_PUSH_COMMIT_COUNT: "1",
+      RETROSPECTIVE_CHECK: "1",
+      COMMIT_LIMIT_TZ: "Asia/Jakarta",
+      MAIN_DAILY_COMMIT_LIMIT: "5",
+    });
+    expect(onlyTip.status).toBe(0);
+
+    const bothCommits = runCommitLimitCheck({
+      GIT_BRANCH: "origin/main",
+      GIT_PUSH_TIP: tip,
+      GIT_PUSH_BASE: ZERO_SHA,
+      GIT_PUSH_COMMIT_COUNT: "2",
+      RETROSPECTIVE_CHECK: "1",
+      COMMIT_LIMIT_TZ: "Asia/Jakarta",
+      MAIN_DAILY_COMMIT_LIMIT: "5",
+    });
+    expect(bothCommits.status).not.toBe(0);
+    expect(bothCommits.output).toContain("Backdated committer dates");
+  });
+
   it("rejects shell metacharacters in GIT_PUSH_TIP", () => {
     const result = runCommitLimitCheck({
       GIT_BRANCH: "origin/main",
