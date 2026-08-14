@@ -241,11 +241,14 @@ function main() {
 
   console.log(result.message);
 
-  if (
-    process.env.STOP_WHEN_AT_LIMIT === "1" &&
-    isDailyMainCommitQuotaExhausted(commitsToday, limit)
-  ) {
-    process.exit(1);
+  if (process.env.STOP_WHEN_AT_LIMIT === "1") {
+    const retrospective = process.env.RETROSPECTIVE_CHECK === "1";
+    const stopAtLimit = retrospective
+      ? commitsToday > limit
+      : isDailyMainCommitQuotaExhausted(commitsToday, limit);
+    if (stopAtLimit) {
+      process.exit(1);
+    }
   }
 
   if (!result.allowed) {

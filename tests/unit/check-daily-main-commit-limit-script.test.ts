@@ -98,14 +98,35 @@ describe("check-daily-main-commit-limit script", () => {
   });
 
   it("exits 1 when STOP_WHEN_AT_LIMIT and quota is exhausted", () => {
+    const fiveTodayRef = createTodayCommitsOnBase(preTodayBase, 5);
+
     const result = runCommitLimitCheck({
-      GIT_BRANCH: "origin/main",
+      GIT_BRANCH: fiveTodayRef,
       STOP_WHEN_AT_LIMIT: "1",
       COMMIT_LIMIT_TZ: "Asia/Jakarta",
-      MAIN_DAILY_COMMIT_LIMIT: "0",
+      MAIN_DAILY_COMMIT_LIMIT: "5",
     });
 
     expect(result.status).toBe(1);
+    expect(result.output).toContain("5/5");
+  });
+
+  it("allows STOP_WHEN_AT_LIMIT at exactly quota on retrospective check", () => {
+    const fiveTodayRef = createTodayCommitsOnBase(preTodayBase, 5);
+
+    const result = runCommitLimitCheck({
+      GIT_BRANCH: fiveTodayRef,
+      GIT_PUSH_TIP: fiveTodayRef,
+      GIT_PUSH_BASE: ZERO_SHA,
+      GIT_PUSH_COMMIT_COUNT: "1",
+      STOP_WHEN_AT_LIMIT: "1",
+      RETROSPECTIVE_CHECK: "1",
+      COMMIT_LIMIT_TZ: "Asia/Jakarta",
+      MAIN_DAILY_COMMIT_LIMIT: "5",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.output).toContain("5/5");
   });
 
   it("validates multiple commits on zero-base retrospective push", () => {
