@@ -213,7 +213,11 @@ function validateRetrospectiveCommitDates(
 }
 
 function main() {
-  const branch = process.env.GIT_BRANCH ?? "main";
+  const rawBranch = process.env.GIT_BRANCH ?? "main";
+  const branch =
+    rawBranch === ZERO_SHA
+      ? rawBranch
+      : assertSafeGitRef(rawBranch, "GIT_BRANCH");
   const timezone = process.env.COMMIT_LIMIT_TZ ?? DEFAULT_COMMIT_LIMIT_TIMEZONE;
   assertValidTimezone(timezone);
   const limit = Number.parseInt(

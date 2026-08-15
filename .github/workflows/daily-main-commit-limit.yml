@@ -57,9 +57,8 @@ jobs:
             ZERO_SHA="0000000000000000000000000000000000000000"
             if [ -n "$BEFORE" ] && [ "$BEFORE" != "$ZERO_SHA" ]; then
               export GIT_PUSH_COMMIT_COUNT="$(git rev-list --count --first-parent "$BEFORE..$TIP")"
-            elif [ "${{ github.event.commits && github.event.commits.length || 0 }}" != "0" ]; then
-              export GIT_PUSH_COMMIT_COUNT="${{ github.event.commits.length }}"
             else
+              # Always derive zero-base push size from git; event.commits can truncate.
               export GIT_PUSH_COMMIT_COUNT="$(git rev-list --count --first-parent "$ZERO_SHA..$TIP")"
             fi
           fi

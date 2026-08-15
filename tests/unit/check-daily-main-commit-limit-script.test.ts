@@ -243,4 +243,15 @@ describe("check-daily-main-commit-limit script", () => {
     expect(result.status).not.toBe(0);
     expect(result.output).toContain("Invalid GIT_PUSH_TIP");
   });
+
+  it("rejects shell metacharacters in GIT_BRANCH", () => {
+    const result = runCommitLimitCheck({
+      GIT_BRANCH: "-n^{commit}",
+      COMMIT_LIMIT_TZ: "Asia/Jakarta",
+      MAIN_DAILY_COMMIT_LIMIT: "5",
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(result.output).toContain("Invalid GIT_BRANCH");
+  });
 });
