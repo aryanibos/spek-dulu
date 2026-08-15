@@ -2,6 +2,12 @@ import { execSync } from "node:child_process";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const ZERO_SHA = "0000000000000000000000000000000000000000";
+const TEST_GIT_COMMIT_ENV = {
+  GIT_AUTHOR_NAME: "spekdulu-test",
+  GIT_AUTHOR_EMAIL: "test@spekdulu.local",
+  GIT_COMMITTER_NAME: "spekdulu-test",
+  GIT_COMMITTER_EMAIL: "test@spekdulu.local",
+} as const;
 
 function createTodayCommitsOnBase(baseRef: string, commitCount: number): string {
   let parent = execSync(`git rev-parse ${baseRef}^{commit}`, { encoding: "utf8" }).trim();
@@ -15,6 +21,7 @@ function createTodayCommitsOnBase(baseRef: string, commitCount: number): string 
         encoding: "utf8",
         env: {
           ...process.env,
+          ...TEST_GIT_COMMIT_ENV,
           GIT_AUTHOR_DATE: nowIso,
           GIT_COMMITTER_DATE: nowIso,
         },
@@ -186,6 +193,7 @@ describe("check-daily-main-commit-limit script", () => {
         encoding: "utf8",
         env: {
           ...process.env,
+          ...TEST_GIT_COMMIT_ENV,
           GIT_AUTHOR_DATE: yesterdayIso,
           GIT_COMMITTER_DATE: yesterdayIso,
         },
@@ -199,6 +207,7 @@ describe("check-daily-main-commit-limit script", () => {
         encoding: "utf8",
         env: {
           ...process.env,
+          ...TEST_GIT_COMMIT_ENV,
           GIT_AUTHOR_DATE: nowIso,
           GIT_COMMITTER_DATE: nowIso,
         },
