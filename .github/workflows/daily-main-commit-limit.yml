@@ -256,29 +256,25 @@ jobs:
             exit 1
           fi
 
-      - name: Final quota and head SHA check before merge
+      - name: Final quota check and squash merge cursor PR to main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          pr="${{ github.event.pull_request.number }}"
           expected_sha="${{ github.event.pull_request.head.sha }}"
           git fetch origin main
           if ! GIT_BRANCH=origin/main PENDING_MAIN_COMMITS=1 npm run --silent check:main-commit-limit; then
             echo "Daily limit reached before merge; aborting."
             exit 1
           fi
-          current_sha="$(gh pr view "${{ github.event.pull_request.number }}" --json headRefOid -q .headRefOid)"
+          current_sha="$(gh pr view "$pr" --json headRefOid -q .headRefOid)"
           if [[ "$current_sha" != "$expected_sha" ]]; then
             echo "PR head moved before merge ($expected_sha -> $current_sha); aborting."
             exit 1
           fi
-
-      - name: Squash merge cursor PR to main
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh pr merge "${{ github.event.pull_request.number }}" \
+          gh pr merge "$pr" \
             --squash \
             --delete-branch \
             --admin \
-            --match-head-commit "${{ github.event.pull_request.head.sha }}"
+            --match-head-commit "$expected_sha"
