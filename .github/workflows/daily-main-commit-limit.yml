@@ -139,12 +139,13 @@ jobs:
               --workflow="daily-main-commit-limit.yml" \
               --branch="$head_branch" \
               --status=failure \
-              --limit 1 \
-              --json databaseId \
-              --jq '.[0].databaseId // empty' \
+              --limit 20 \
+              --json databaseId,headSha,conclusion \
+              --jq --arg head "$head_sha" \
+                '[.[] | select(.headSha == $head) | select(.conclusion == "failure")] | .[0].databaseId // empty' \
               2>/dev/null || true)"
             if [[ -n "$failed_run" ]]; then
-              echo "Re-running stale failed limit workflow run ${failed_run} for PR #${pr}..."
+              echo "Re-running stale failed limit workflow run ${failed_run} for PR #${pr} at ${head_sha}..."
               gh run rerun "$failed_run" || true
               for _ in $(seq 1 60); do
                 run_status="$(gh run view "$failed_run" --json status -q .status 2>/dev/null || echo completed)"
@@ -153,6 +154,17 @@ jobs:
                 fi
                 sleep 10
               done
+            fi
+
+            git fetch origin main
+            if ! GIT_BRANCH=origin/main PENDING_MAIN_COMMITS=1 npm run --silent check:main-commit-limit; then
+              echo "Daily limit reached after rerun wait; stopping midnight merge queue."
+              break
+            fi
+            current_sha="$(gh pr view "$pr" --json headRefOid -q .headRefOid)"
+            if [[ "$current_sha" != "$head_sha" ]]; then
+              echo "PR #${pr} head moved during rerun wait (${head_sha} -> ${current_sha}); skipping."
+              continue
             fi
 
             if ! gh pr checks "$pr" --required; then
