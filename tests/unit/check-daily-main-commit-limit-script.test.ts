@@ -104,6 +104,20 @@ describe("check-daily-main-commit-limit script", () => {
     expect(result.output).not.toContain("Backdated committer dates");
   });
 
+  it("exits 0 when STOP_WHEN_AT_LIMIT and quota has remaining slots", () => {
+    const fourTodayRef = createTodayCommitsOnBase(preTodayBase, 4);
+
+    const result = runCommitLimitCheck({
+      GIT_BRANCH: fourTodayRef,
+      STOP_WHEN_AT_LIMIT: "1",
+      COMMIT_LIMIT_TZ: "Asia/Jakarta",
+      MAIN_DAILY_COMMIT_LIMIT: "5",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.output).toContain("4/5");
+  });
+
   it("exits 1 when STOP_WHEN_AT_LIMIT and quota is exhausted", () => {
     const fiveTodayRef = createTodayCommitsOnBase(preTodayBase, 5);
 

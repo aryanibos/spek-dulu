@@ -103,6 +103,12 @@ jobs:
         run: |
           set -euo pipefail
 
+          git fetch origin main
+          if ! GIT_BRANCH=origin/main STOP_WHEN_AT_LIMIT=1 npm run --silent check:main-commit-limit; then
+            echo "Daily quota exhausted; skipping midnight merge queue."
+            exit 0
+          fi
+
           mapfile -t prs < <(
             gh pr list \
               --base main \
