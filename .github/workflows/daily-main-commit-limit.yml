@@ -160,7 +160,7 @@ jobs:
               continue
             fi
 
-            if ! gh pr merge "$pr" --squash --delete-branch --admin; then
+            if ! gh pr merge "$pr" --squash --delete-branch --admin --match-head-commit "$head_sha"; then
               echo "Failed to merge PR #${pr}; continuing queue."
               continue
             fi
@@ -240,4 +240,5 @@ jobs:
           gh pr merge "${{ github.event.pull_request.number }}" \
             --squash \
             --delete-branch \
-            --admin
+            --admin \
+            --match-head-commit "${{ github.event.pull_request.head.sha }}"
