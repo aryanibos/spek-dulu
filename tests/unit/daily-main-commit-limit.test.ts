@@ -72,6 +72,20 @@ describe("daily main commit limit", () => {
     expect(result.message).toContain("Sisa 0");
   });
 
+  it("allows tip replacement at the daily limit without consuming quota", () => {
+    const result = evaluateDailyMainCommitLimit({
+      commitsToday: 5,
+      pendingCommits: 0,
+      limit: 5,
+      timezone: "Asia/Jakarta",
+      now: new Date("2026-08-01T12:00:00.000Z"),
+      tipReplacement: true,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.message).toContain("5/5");
+  });
+
   it("blocks further commits when already at the limit", () => {
     const result = evaluateDailyMainCommitLimit({
       commitsToday: 5,

@@ -252,6 +252,39 @@ describe("check-daily-main-commit-limit script", () => {
     expect(bothCommits.output).toContain("Backdated committer dates");
   });
 
+  it("does not count tip-only amend as a new pending commit", () => {
+    const fiveTodayRef = createTodayCommitsOnBase(preTodayBase, 5);
+    const nowIso = execSync("TZ=Asia/Jakarta date -Iseconds", { encoding: "utf8" }).trim();
+    const oldTip = execSync(`git rev-parse ${fiveTodayRef}^{commit}`, {
+      encoding: "utf8",
+    }).trim();
+    const oldParent = execSync(`git rev-parse ${oldTip}^`, { encoding: "utf8" }).trim();
+    const tree = execSync(`git rev-parse ${oldTip}^{tree}`, { encoding: "utf8" }).trim();
+    const amendedTip = execSync(
+      `git commit-tree ${tree} -p ${oldParent} -m "commit-limit amended tip"`,
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          ...TEST_GIT_COMMIT_ENV,
+          GIT_AUTHOR_DATE: nowIso,
+          GIT_COMMITTER_DATE: nowIso,
+        },
+      },
+    ).trim();
+
+    const result = runCommitLimitCheck({
+      GIT_BRANCH: fiveTodayRef,
+      GIT_PUSH_TIP: amendedTip,
+      GIT_PUSH_BASE: oldTip,
+      COMMIT_LIMIT_TZ: "Asia/Jakarta",
+      MAIN_DAILY_COMMIT_LIMIT: "5",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.output).toContain("5/5");
+  });
+
   it("rejects shell metacharacters in GIT_PUSH_TIP", () => {
     const result = runCommitLimitCheck({
       GIT_BRANCH: "origin/main",

@@ -24,6 +24,10 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 
   remote_main="$(git rev-parse "${remote}/main")"
 
+  if [[ "$local_sha" == "$remote_main" ]]; then
+    continue
+  fi
+
   export COMMIT_LIMIT_TZ="Asia/Jakarta"
   export GIT_PUSH_TIP="$local_sha"
   export GIT_BRANCH="$remote_main"

@@ -149,6 +149,27 @@ function readZeroBasePushCommits(): CommitTimestamp[] {
   return readCommitTimestampsFromTip(pushTip, count);
 }
 
+function readFirstParentSha(ref: string): string | null {
+  try {
+    return runGit(
+      ["rev-parse", `${assertSafeGitRef(ref, "git ref")}^`],
+      "utf8",
+    ).trim();
+  } catch {
+    return null;
+  }
+}
+
+/** Amend / tip-only rewrite: same parent, base is replaced tip (not append). */
+function isTipReplacementPush(base: string, tip: string): boolean {
+  const baseParent = readFirstParentSha(base);
+  const tipParent = readFirstParentSha(tip);
+  if (!baseParent || !tipParent || baseParent !== tipParent) {
+    return false;
+  }
+  return base !== tipParent;
+}
+
 function readPushRangeCommits(): CommitTimestamp[] {
   const pushTip = process.env.GIT_PUSH_TIP;
   if (!pushTip) {
@@ -176,9 +197,20 @@ function readPendingMainCommits(timezone: string) {
     return pending;
   }
 
+  const pushTip = process.env.GIT_PUSH_TIP;
+  const pushBase = process.env.GIT_PUSH_BASE;
   const commits = readPushRangeCommits();
   if (commits.length > 0) {
     assertValidCommitDates(commits, timezone);
+    if (
+      commits.length === 1 &&
+      pushTip &&
+      pushBase &&
+      pushBase !== ZERO_SHA &&
+      isTipReplacementPush(pushBase, pushTip)
+    ) {
+      return 0;
+    }
     return commits.length;
   }
 
@@ -242,12 +274,19 @@ function main() {
 
   const commitsToday = countCommitsToday(commits, timezone);
   const pendingCommits = readPendingMainCommits(timezone);
+  const pushTip = process.env.GIT_PUSH_TIP;
+  const pushBase = process.env.GIT_PUSH_BASE;
+  const tipReplacement =
+    pendingCommits === 0 &&
+    Boolean(pushTip && pushBase && pushBase !== ZERO_SHA) &&
+    isTipReplacementPush(pushBase!, pushTip!);
   const result = evaluateDailyMainCommitLimit({
     commitsToday,
     limit,
     timezone,
     pendingCommits,
     retrospective: process.env.RETROSPECTIVE_CHECK === "1",
+    tipReplacement,
   });
 
   console.log(result.message);

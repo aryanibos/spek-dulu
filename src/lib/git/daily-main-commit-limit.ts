@@ -118,13 +118,16 @@ export function evaluateDailyMainCommitLimit(options: {
   pendingCommits?: number;
   /** Post-push verification: at-quota (N/N) is OK; only N+1 is blocked. */
   retrospective?: boolean;
+  /** Tip amend/rewrite replaces an existing commit; at-quota is OK. */
+  tipReplacement?: boolean;
 }): DailyMainCommitLimitResult {
   const limit = options.limit ?? DEFAULT_MAIN_DAILY_COMMIT_LIMIT;
   const timezone = options.timezone ?? DEFAULT_COMMIT_LIMIT_TIMEZONE;
   const now = options.now ?? new Date();
   const pendingCommits = options.pendingCommits ?? 0;
   const totalAfterPending = options.commitsToday + pendingCommits;
-  const allowed = options.retrospective
+  const allowAtQuota = options.retrospective || options.tipReplacement;
+  const allowed = allowAtQuota
     ? options.commitsToday <= limit
     : pendingCommits > 0
       ? totalAfterPending <= limit

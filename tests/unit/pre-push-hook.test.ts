@@ -15,4 +15,9 @@ describe("pre-push hook", () => {
     expect(hook).toMatch(/export GIT_PUSH_BASE="\$remote_main"/);
     expect(hook).not.toMatch(/export GIT_PUSH_BASE=""/);
   });
+
+  it("skips limit check when local main matches fetched remote main", () => {
+    const hook = readFileSync(".githooks/pre-push", "utf8");
+    expect(hook).toMatch(/local_sha" == "\$remote_main"/);
+  });
 });
