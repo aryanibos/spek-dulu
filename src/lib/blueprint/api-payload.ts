@@ -28,7 +28,9 @@ export function blueprintForApiPayload(
   if (options.stripDocumentContent) {
     return {
       ...payload,
-      documents: payload.documents.map((doc) => ({ ...doc, content: "" })),
+      documents: payload.documents.map((doc) =>
+        doc.isDetailed ? doc : { ...doc, content: "" },
+      ),
     };
   }
 

@@ -163,6 +163,11 @@ jobs:
                 fi
                 sleep 10
               done
+              run_conclusion="$(gh run view "$failed_run" --json conclusion -q .conclusion 2>/dev/null || echo failure)"
+              if [[ "$run_conclusion" != "success" ]]; then
+                echo "Stale limit workflow rerun did not succeed (conclusion: ${run_conclusion}); skipping PR #${pr}."
+                continue
+              fi
             fi
 
             git fetch origin main
@@ -192,12 +197,19 @@ jobs:
               continue
             fi
 
+            main_before="$(git rev-parse origin/main)"
             if ! gh pr merge "$pr" --squash --delete-branch --admin --match-head-commit "$head_sha"; then
               echo "Failed to merge PR #${pr}; continuing queue."
               continue
             fi
             echo "Merged PR #${pr} at ${head_sha}."
-            git fetch origin main
+            for _ in $(seq 1 30); do
+              git fetch origin main
+              if [[ "$(git rev-parse origin/main)" != "$main_before" ]]; then
+                break
+              fi
+              sleep 2
+            done
           done
 
   auto-merge-cursor-pr:
@@ -280,6 +292,10 @@ jobs:
           current_sha="$(gh pr view "$pr" --json headRefOid -q .headRefOid)"
           if [[ "$current_sha" != "$expected_sha" ]]; then
             echo "PR head moved before merge ($expected_sha -> $current_sha); aborting."
+            exit 1
+          fi
+          if ! gh pr checks "$pr" --required; then
+            echo "Required checks not passing immediately before merge; aborting."
             exit 1
           fi
           gh pr merge "$pr" \

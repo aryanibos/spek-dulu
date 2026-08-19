@@ -47,6 +47,25 @@ describe("blueprint API payload", () => {
     expect(validated.documents.some((doc) => doc.content.trim().length > 0)).toBe(true);
   });
 
+  it("preserves isDetailed document bodies when stripping for validate API", () => {
+    const bp = enrichBlueprint(buildDemoBlueprint("A todo app for students", {}));
+    const refined = {
+      ...bp,
+      documents: bp.documents.map((doc, index) =>
+        index === 0
+          ? { ...doc, content: "USER REFINED PRD", isDetailed: true }
+          : doc,
+      ),
+    };
+
+    const stripped = blueprintForApiPayload(refined, { stripDocumentContent: true });
+    expect(stripped.documents[0]!.content).toBe("USER REFINED PRD");
+    expect(stripped.documents.slice(1).every((doc) => doc.content === "")).toBe(true);
+
+    const validated = blueprintForValidation(stripped);
+    expect(validated.documents[0]!.content).toBe("USER REFINED PRD");
+  });
+
   it("strips document bodies for visual-design API payloads", () => {
     const bp = enrichBlueprint(buildDemoBlueprint("A todo app for students", {}));
     const heavy = enrichBlueprint({
