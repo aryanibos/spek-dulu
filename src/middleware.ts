@@ -1,19 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import {
-  isSameOriginApiRequest,
-  shouldAlwaysGuardApiPath,
-  shouldGuardApiRoutes,
-} from "@/lib/security/api-guard";
+import { isSameOriginApiRequest } from "@/lib/security/api-guard";
 
 export function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
-  const guardRequired =
-    shouldGuardApiRoutes() || shouldAlwaysGuardApiPath(pathname);
-
-  if (!guardRequired) {
-    return NextResponse.next();
-  }
-
   if (!request.nextUrl.pathname.startsWith("/api/")) {
     return NextResponse.next();
   }
@@ -27,11 +15,7 @@ export function middleware(request: NextRequest) {
   }
 
   return NextResponse.json(
-    {
-      error: shouldAlwaysGuardApiPath(pathname)
-        ? "This API route requires same-origin requests."
-        : "API routes require same-origin requests when GEMINI_API_KEY is configured.",
-    },
+    { error: "This API route requires same-origin requests." },
     { status: 403 },
   );
 }

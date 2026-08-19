@@ -76,7 +76,6 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   );
 
   const persist = useCallback(async (next: ProjectBlueprint) => {
-    const previous = projectRef.current;
     const activeForSave = isActiveProject(next.id);
 
     if (activeForSave) {
@@ -92,15 +91,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
           setProject(saved);
         }
       } catch (err) {
-        if (
-          activeForSave &&
-          previous != null &&
-          projectRef.current === next &&
-          isActiveProject(next.id)
-        ) {
-          projectRef.current = previous;
-          setProject(previous);
-        }
+        // Keep optimistic in-memory state after successful API work; caller surfaces save errors.
         throw err;
       }
     });

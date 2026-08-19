@@ -37,7 +37,7 @@ describe("api guard", () => {
     expect(hasGeminiKey()).toBe(true);
   });
 
-  it("always guards URL-fetch API paths even without GEMINI_API_KEY", () => {
+  it("marks URL-fetch API paths for always-on same-origin guard", () => {
     expect(shouldAlwaysGuardApiPath("/api/analyze-url")).toBe(true);
     expect(shouldAlwaysGuardApiPath("/api/analyze-url/")).toBe(true);
     expect(shouldAlwaysGuardApiPath("/api/blueprint")).toBe(true);
@@ -45,6 +45,19 @@ describe("api guard", () => {
     expect(shouldAlwaysGuardApiPath("/api/visual-design")).toBe(true);
     expect(shouldAlwaysGuardApiPath("/api/visual-design/")).toBe(true);
     expect(shouldAlwaysGuardApiPath("/api/interview")).toBe(false);
+  });
+
+  it("rejects unauthenticated demo-mode POSTs without Sec-Fetch-Site", () => {
+    vi.stubEnv("GEMINI_API_KEY", "");
+    const interview = makeRequest("https://spekdulu.example/api/interview", {
+      host: "spekdulu.example",
+    });
+    const refine = makeRequest("https://spekdulu.example/api/refine", {
+      host: "spekdulu.example",
+    });
+
+    expect(isSameOriginApiRequest(interview)).toBe(false);
+    expect(isSameOriginApiRequest(refine)).toBe(false);
   });
 
   it("accepts same-origin requests via Sec-Fetch-Site", () => {
