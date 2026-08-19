@@ -207,5 +207,5 @@ Keep markdown. Preserve locked MVP scope. Return JSON {"updatedContent":"...","s
 };
 
 export function hasGeminiKey() {
-  return Boolean(process.env.GEMINI_API_KEY);
+  return Boolean(process.env.GEMINI_API_KEY?.trim());
 }

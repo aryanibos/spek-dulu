@@ -3,6 +3,7 @@ import { buildArtifacts, enrichBlueprint } from "@/lib/artifacts/render";
 import { buildDemoBlueprint } from "@/lib/demos/preset";
 import {
   blueprintForApiPayload,
+  blueprintForValidation,
   serializeBlueprintForApi,
 } from "@/lib/blueprint/api-payload";
 import { artifactSchema, projectBlueprintSchema, refineRequestSchema, validateRequestSchema } from "@/lib/schema";
@@ -35,6 +36,15 @@ describe("blueprint API payload", () => {
     const apiJson = serializeBlueprintForApi(heavy, { stripDocumentContent: true });
     expect(apiJson.length).toBeLessThan(500_000);
     expect(validateRequestSchema.safeParse({ blueprintJson: apiJson }).success).toBe(true);
+  });
+
+  it("rehydrates stripped documents for coherence validation", () => {
+    const bp = enrichBlueprint(buildDemoBlueprint("A todo app for students", {}));
+    const stripped = blueprintForApiPayload(bp, { stripDocumentContent: true });
+    expect(stripped.documents.every((doc) => doc.content === "")).toBe(true);
+
+    const validated = blueprintForValidation(stripped);
+    expect(validated.documents.some((doc) => doc.content.trim().length > 0)).toBe(true);
   });
 
   it("strips document bodies for visual-design API payloads", () => {

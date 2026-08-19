@@ -1,3 +1,4 @@
+import { enrichBlueprint } from "@/lib/artifacts/render";
 import type { ProjectBlueprint } from "@/lib/schema";
 
 export type BlueprintApiPayloadOptions = {
@@ -49,4 +50,15 @@ export function serializeBlueprintForApi(
   options: BlueprintApiPayloadOptions = {},
 ): string {
   return JSON.stringify(blueprintForApiPayload(bp, options));
+}
+
+/** Rehydrate stripped document bodies before server-side coherence validation. */
+export function blueprintForValidation(bp: ProjectBlueprint): ProjectBlueprint {
+  const emptyKeys = bp.documents
+    .filter((doc) => !doc.content.trim() && !doc.isDetailed)
+    .map((doc) => doc.key);
+  if (emptyKeys.length === 0) {
+    return bp;
+  }
+  return enrichBlueprint(bp, { regenerateDocumentKeys: emptyKeys });
 }

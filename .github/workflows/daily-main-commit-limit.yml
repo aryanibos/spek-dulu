@@ -18,6 +18,9 @@ jobs:
   enforce-daily-main-commit-limit:
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    concurrency:
+      group: main-commit-limit-${{ github.repository }}
+      cancel-in-progress: false
     steps:
       - name: Checkout full history
         uses: actions/checkout@v4
@@ -68,7 +71,7 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     concurrency:
-      group: auto-merge-cursor-pr-main
+      group: main-commit-limit-${{ github.repository }}
       cancel-in-progress: false
     permissions:
       actions: write
@@ -209,7 +212,7 @@ jobs:
       github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     concurrency:
-      group: auto-merge-cursor-pr-main
+      group: main-commit-limit-${{ github.repository }}
       cancel-in-progress: false
     permissions:
       contents: write
