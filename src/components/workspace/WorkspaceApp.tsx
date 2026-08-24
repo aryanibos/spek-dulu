@@ -21,10 +21,10 @@ import { ScopeMeter } from "@/components/wizard/ScopeMeter";
 import { buildCursorInstruction, downloadBlueprintZip } from "@/lib/artifacts/zip";
 import { enrichBlueprint, getMissingDocumentKeys } from "@/lib/artifacts/render";
 import { stripDangerousMarkdown } from "@/lib/security/sanitize";
-import type { DocumentKey, ProjectBlueprint, SpecDocument } from "@/lib/schema";
+import type { DocumentKey, ProjectBlueprint, SpecDocument, CoherenceReport } from "@/lib/schema";
 import { getProject, saveProject } from "@/lib/store/projects";
 import { serializeBlueprintForApi } from "@/lib/blueprint/api-payload";
-import { createId } from "@/lib/utils";
+import { createId, readJsonResponse } from "@/lib/utils";
 
 type DesignSuggestion = {
   id: string;
@@ -35,18 +35,25 @@ type DesignSuggestion = {
 };
 
 async function fetchDesignSuggestions(bp: ProjectBlueprint): Promise<DesignSuggestion[]> {
-  const res = await fetch("/api/visual-design", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "suggest",
-      blueprintJson: serializeBlueprintForApi(bp, { stripDocumentContent: true }),
-      originalityMode: bp.visual?.originalityMode ?? "Inspired",
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok || !Array.isArray(data.suggestions)) return [];
-  return data.suggestions;
+  try {
+    const res = await fetch("/api/visual-design", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "suggest",
+        blueprintJson: serializeBlueprintForApi(bp, { stripDocumentContent: true }),
+        originalityMode: bp.visual?.originalityMode ?? "Inspired",
+      }),
+    });
+    const data = await readJsonResponse<{ suggestions?: DesignSuggestion[] }>(
+      res,
+      "Visual design suggestions failed.",
+    );
+    if (!Array.isArray(data.suggestions)) return [];
+    return data.suggestions;
+  } catch {
+    return [];
+  }
 }
 
 export function WorkspaceApp({ projectId }: { projectId: string }) {
@@ -235,11 +242,16 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
           url: extra?.url,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Visual design update failed.");
+      const data = await readJsonResponse<{
+        suggestions?: DesignSuggestion[];
+        visual?: ProjectBlueprint["visual"];
+        url?: string;
+        error?: string;
+      }>(res, "Visual design update failed.");
       if (!isActiveProject(opProjectId)) return;
 
       if (Array.isArray(data.suggestions)) setSuggestions(data.suggestions);
+      if (action === "suggest") return;
 
       const latest = projectRef.current ?? current;
       if (latest.id !== opProjectId) return;
@@ -281,8 +293,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
           blueprintJson: serializeBlueprintForApi(current, { stripDocumentContent: true }),
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Validation failed.");
+      const data = await readJsonResponse<CoherenceReport>(res, "Validation failed.");
       if (!isActiveProject(opProjectId)) return;
       const latest = projectRef.current ?? current;
       if (latest.id !== opProjectId) return;
@@ -322,9 +333,18 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
           }),
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Refine failed.");
+      const data = await readJsonResponse<{
+        updatedContent?: string;
+        versionId?: string;
+        summaryOfChanges?: string;
+        error?: string;
+      }>(res, "Refine failed.");
       if (!isActiveProject(opProjectId)) return;
+
+      const { updatedContent, summaryOfChanges, versionId } = data;
+      if (!updatedContent || !summaryOfChanges) {
+        throw new Error("Refine failed.");
+      }
 
       const latest = projectRef.current ?? current;
       if (latest.id !== opProjectId) return;
@@ -332,7 +352,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         doc.key === opDocKey
           ? {
               ...doc,
-              content: data.updatedContent,
+              content: updatedContent,
               updatedAt: new Date().toISOString(),
               isDetailed: true,
             }
@@ -340,10 +360,10 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
       );
       const refinedDoc = latest.documents.find((doc) => doc.key === opDocKey);
       const version = {
-        id: data.versionId || createId("ver"),
+        id: versionId || createId("ver"),
         documentKey: opDocKey,
         content: opDocContent,
-        summary: data.summaryOfChanges,
+        summary: summaryOfChanges,
         createdAt: new Date().toISOString(),
       };
       const next = enrichBlueprint({
@@ -362,7 +382,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
           {
             id: createId("msg"),
             role: "assistant",
-            text: data.summaryOfChanges,
+            text: summaryOfChanges,
             targetFile: opDocFileName,
             createdAt: new Date().toISOString(),
           },
@@ -371,6 +391,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
       await persist(next);
     } catch (err) {
       if (isActiveProject(opProjectId)) {
+        setChatInput((current) => current || userMessage);
         setError(err instanceof Error ? err.message : "Refine failed.");
       }
     } finally {

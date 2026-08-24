@@ -23,3 +23,22 @@ export function formatDate(iso: string) {
     timeStyle: "short",
   }).format(new Date(iso));
 }
+
+export async function readJsonResponse<T extends Record<string, unknown>>(
+  res: Response,
+  fallbackError: string,
+): Promise<T> {
+  let data: Record<string, unknown> = {};
+  try {
+    data = (await res.json()) as Record<string, unknown>;
+  } catch {
+    if (!res.ok) throw new Error(fallbackError);
+    throw new Error(`${fallbackError} (invalid JSON)`);
+  }
+  if (!res.ok) {
+    throw new Error(
+      typeof data.error === "string" && data.error ? data.error : fallbackError,
+    );
+  }
+  return data as T;
+}

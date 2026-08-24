@@ -21,6 +21,7 @@ import { DEMO_IDEA } from "@/lib/demos/preset";
 import type { InterviewQuestion, OriginalityMode, ProjectBlueprint } from "@/lib/schema";
 import { saveProject } from "@/lib/store/projects";
 import { compressImageFile, dataUrlToBase64 } from "@/lib/visual/compress";
+import { readJsonResponse } from "@/lib/utils";
 
 type Step = "idea" | "interview" | "review";
 
@@ -58,8 +59,11 @@ export function Wizard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idea: nextIdea }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Interview failed.");
+      const data = await readJsonResponse<{
+        questions: InterviewQuestion[];
+        provider: "demo" | "gemini";
+        error?: string;
+      }>(res, "Interview failed.");
       setQuestions(data.questions);
       setProvider(data.provider);
       setAnswers({});
@@ -88,8 +92,10 @@ export function Wizard() {
           screenshotMimeType,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Blueprint failed.");
+      const data = await readJsonResponse<ProjectBlueprint & { error?: string }>(
+        res,
+        "Blueprint failed.",
+      );
       setBlueprint(data);
       setProvider(data.provider);
       setStep("review");
