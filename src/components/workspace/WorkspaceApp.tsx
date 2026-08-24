@@ -111,6 +111,13 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
     setBusy(false);
     setLoading(true);
     setProject(null);
+    setChatInput("");
+    setVisualInstruction("");
+    setChatOpen(false);
+    setQuery("");
+    setActiveKey("01_PRD");
+    setTab("overview");
+    setCopied(null);
   }, [projectId]);
 
   useEffect(() => {
