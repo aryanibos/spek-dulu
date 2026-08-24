@@ -13,8 +13,13 @@ import { applyOriginalityTransformation, originalityWarnings } from "@/lib/visua
 import { z } from "zod";
 import type { AiProvider } from "./types";
 
+export function resolveGeminiApiKey(): string | undefined {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  return apiKey || undefined;
+}
+
 function getClient() {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = resolveGeminiApiKey();
   if (!apiKey) throw new Error("GEMINI_API_KEY is missing.");
   return new GoogleGenAI({ apiKey });
 }
@@ -207,5 +212,5 @@ Keep markdown. Preserve locked MVP scope. Return JSON {"updatedContent":"...","s
 };
 
 export function hasGeminiKey() {
-  return Boolean(process.env.GEMINI_API_KEY?.trim());
+  return Boolean(resolveGeminiApiKey());
 }

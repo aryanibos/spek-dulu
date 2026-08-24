@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { NextRequest } from "next/server";
-import { hasGeminiKey } from "@/lib/ai/gemini-provider";
+import { hasGeminiKey, resolveGeminiApiKey } from "@/lib/ai/gemini-provider";
 import {
   isSameOriginApiRequest,
   shouldAlwaysGuardApiPath,
@@ -27,14 +27,17 @@ describe("api guard", () => {
     vi.stubEnv("GEMINI_API_KEY", "");
     expect(shouldGuardApiRoutes()).toBe(false);
     expect(hasGeminiKey()).toBe(false);
+    expect(resolveGeminiApiKey()).toBeUndefined();
 
     vi.stubEnv("GEMINI_API_KEY", "   ");
     expect(shouldGuardApiRoutes()).toBe(false);
     expect(hasGeminiKey()).toBe(false);
+    expect(resolveGeminiApiKey()).toBeUndefined();
 
-    vi.stubEnv("GEMINI_API_KEY", "test-key");
+    vi.stubEnv("GEMINI_API_KEY", "  test-key  ");
     expect(shouldGuardApiRoutes()).toBe(true);
     expect(hasGeminiKey()).toBe(true);
+    expect(resolveGeminiApiKey()).toBe("test-key");
   });
 
   it("marks URL-fetch API paths for always-on same-origin guard", () => {
