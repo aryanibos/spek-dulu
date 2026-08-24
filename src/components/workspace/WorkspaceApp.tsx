@@ -202,7 +202,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
     });
   }, [project, query]);
 
-  const activeDoc = project?.documents.find((d) => d.key === activeKey) ?? docs[0];
+  const activeDoc = docs.find((d) => d.key === activeKey) ?? docs[0];
 
   async function applyVisualUpdate(action: "suggest" | "apply-suggestion" | "revise" | "from-url", extra?: {
     presetId?: string;
@@ -292,7 +292,8 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
 
   async function refineActive() {
     const current = projectRef.current;
-    if (!current || !activeDoc || !chatInput.trim()) return;
+    const userMessage = chatInput.trim();
+    if (!current || !activeDoc || !userMessage) return;
     const opProjectId = current.id;
     const opDocKey = activeDoc.key;
     const opDocContent = activeDoc.content;
@@ -306,7 +307,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         body: JSON.stringify({
           projectId: current.id,
           fileName: activeDoc.fileName,
-          userQuery: chatInput,
+          userQuery: userMessage,
           blueprintJson: serializeBlueprintForApi(current, {
             keepDocumentFileName: activeDoc.fileName,
           }),
@@ -345,7 +346,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
           {
             id: createId("msg"),
             role: "user",
-            text: chatInput,
+            text: userMessage,
             targetFile: opDocFileName,
             createdAt: new Date().toISOString(),
           },
