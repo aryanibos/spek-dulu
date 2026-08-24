@@ -113,6 +113,8 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
     setProject(null);
     setChatInput("");
     setVisualInstruction("");
+    setVisualUrl("");
+    setVisualMode("Inspired");
     setChatOpen(false);
     setQuery("");
     setActiveKey("01_PRD");
@@ -203,6 +205,12 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   }, [project, query]);
 
   const activeDoc = docs.find((d) => d.key === activeKey) ?? docs[0];
+
+  useEffect(() => {
+    if (docs.length > 0 && !docs.some((d) => d.key === activeKey)) {
+      setActiveKey(docs[0]!.key);
+    }
+  }, [docs, activeKey]);
 
   async function applyVisualUpdate(action: "suggest" | "apply-suggestion" | "revise" | "from-url", extra?: {
     presetId?: string;
@@ -298,6 +306,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
     const opDocKey = activeDoc.key;
     const opDocContent = activeDoc.content;
     const opDocFileName = activeDoc.fileName;
+    setChatInput("");
     setBusy(true);
     setError(null);
     try {
@@ -306,10 +315,10 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: current.id,
-          fileName: activeDoc.fileName,
+          fileName: opDocFileName,
           userQuery: userMessage,
           blueprintJson: serializeBlueprintForApi(current, {
-            keepDocumentFileName: activeDoc.fileName,
+            keepDocumentFileName: opDocFileName,
           }),
         }),
       });
@@ -360,7 +369,6 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         ],
       });
       await persist(next);
-      setChatInput("");
     } catch (err) {
       if (isActiveProject(opProjectId)) {
         setError(err instanceof Error ? err.message : "Refine failed.");
