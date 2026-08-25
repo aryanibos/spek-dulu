@@ -6,5 +6,5 @@ export default async function WorkspacePage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  return <WorkspaceApp projectId={projectId} />;
+  return <WorkspaceApp key={projectId} projectId={projectId} />;
 }

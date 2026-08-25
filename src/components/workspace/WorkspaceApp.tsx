@@ -19,7 +19,11 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { ScopeMeter } from "@/components/wizard/ScopeMeter";
 import { buildCursorInstruction, downloadBlueprintZip } from "@/lib/artifacts/zip";
-import { enrichBlueprint, getMissingDocumentKeys } from "@/lib/artifacts/render";
+import {
+  buildArtifacts,
+  enrichBlueprint,
+  getMissingDocumentKeys,
+} from "@/lib/artifacts/render";
 import { stripDangerousMarkdown } from "@/lib/security/sanitize";
 import type { DocumentKey, ProjectBlueprint, SpecDocument, CoherenceReport } from "@/lib/schema";
 import { getProject, saveProject } from "@/lib/store/projects";
@@ -76,6 +80,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
   const projectRef = useRef<ProjectBlueprint | null>(null);
   const activeProjectIdRef = useRef(projectId);
   const saveChainRef = useRef(Promise.resolve());
+  const suggestGenRef = useRef(0);
 
   const isActiveProject = useCallback(
     (id: string) => activeProjectIdRef.current === id,
@@ -175,8 +180,13 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
         }
         if (cancelled) return;
         try {
+          const loadGen = ++suggestGenRef.current;
           const loadedSuggestions = await fetchDesignSuggestions(enriched);
-          if (!cancelled && isActiveProject(enriched.id)) {
+          if (
+            !cancelled &&
+            loadGen === suggestGenRef.current &&
+            isActiveProject(enriched.id)
+          ) {
             setSuggestions(loadedSuggestions);
           }
         } catch {
@@ -250,8 +260,17 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
       }>(res, "Visual design update failed.");
       if (!isActiveProject(opProjectId)) return;
 
-      if (Array.isArray(data.suggestions)) setSuggestions(data.suggestions);
-      if (action === "suggest") return;
+      if (action === "suggest") {
+        if (Array.isArray(data.suggestions)) {
+          suggestGenRef.current += 1;
+          setSuggestions(data.suggestions);
+        }
+        return;
+      }
+
+      if (!data.visual) {
+        throw new Error("Visual design update failed.");
+      }
 
       const latest = projectRef.current ?? current;
       if (latest.id !== opProjectId) return;
@@ -897,7 +916,7 @@ export function WorkspaceApp({ projectId }: { projectId: string }) {
           <div className="mt-6">
             <p className="text-sm font-semibold">Package contents</p>
             <ul className="mt-2 space-y-1 text-sm text-[var(--text-secondary)]">
-              {project.artifacts.map((artifact) => (
+              {buildArtifacts(project).map((artifact) => (
                 <li key={artifact.path}>- {artifact.path}</li>
               ))}
             </ul>
