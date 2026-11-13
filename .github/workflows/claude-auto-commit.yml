@@ -1,0 +1,193 @@
+name: Claude auto-commit
+
+# Uses the Anthropic API key in the ANTHROPIC_API_KEY repository secret,
+# so token cost is billed to the Claude Console balance, not Cursor usage.
+# GitHub Actions minutes are still billed by GitHub.
+#
+# Schedule is Asia/Jakarta daytime, five runs, one commit slot each:
+# 08:00, 11:00, 14:00, 17:00, 20:00 WIB (UTC+7).
+on:
+  schedule:
+    - cron: "0 1,4,7,10,13 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: main-commit-limit-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  claude-auto-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch latest main
+        run: git fetch origin main
+
+      - name: Stop when the daily main quota is full
+        id: quota
+        env:
+          GIT_BRANCH: origin/main
+          COMMIT_LIMIT_TZ: Asia/Jakarta
+          MAIN_DAILY_COMMIT_LIMIT: "5"
+          STOP_WHEN_AT_LIMIT: "1"
+        run: |
+          set +e
+          output="$(npm run --silent check:main-commit-limit 2>&1)"
+          code=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$code" -eq 0 ]; then
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+          elif printf '%s\n' "$output" | grep -q "sudah tercapai"; then
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
+            echo "Daily quota is full. Claude was not called."
+          else
+            exit "$code"
+          fi
+
+      - name: Merge an existing Claude auto-commit PR without a new API call
+        id: existing
+        if: steps.quota.outputs.allowed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_BRANCH: origin/main
+          COMMIT_LIMIT_TZ: Asia/Jakarta
+          MAIN_DAILY_COMMIT_LIMIT: "5"
+          PENDING_MAIN_COMMITS: "1"
+        run: |
+          set -euo pipefail
+          pr="$(gh pr list \
+            --base main \
+            --state open \
+            --json number,headRefName \
+            --jq '[.[] | select(.headRefName | startswith("cursor/claude-auto-"))] | .[0].number // empty')"
+          if [ -z "$pr" ]; then
+            echo "open=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "open=true" >> "$GITHUB_OUTPUT"
+          echo "Open Claude auto-commit PR #${pr} already exists. Skipping a new Claude run."
+          git fetch origin main
+          if ! npm run --silent check:main-commit-limit; then
+            echo "Daily limit reached; leaving PR #${pr} open until tomorrow morning."
+            exit 0
+          fi
+          if ! gh pr checks "$pr" --required; then
+            echo "Required checks are still running for PR #${pr}."
+            exit 0
+          fi
+          head_sha="$(gh pr view "$pr" --json headRefOid -q .headRefOid)"
+          gh pr merge "$pr" --squash --delete-branch --admin --match-head-commit "$head_sha"
+
+      - name: Create working branch
+        id: work
+        if: steps.quota.outputs.allowed == 'true' && steps.existing.outputs.open == 'false'
+        run: |
+          branch="cursor/claude-auto-${GITHUB_RUN_ID}"
+          git checkout -b "$branch"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Debug and code-review one fix with Claude
+        id: claude
+        if: steps.quota.outputs.allowed == 'true' && steps.existing.outputs.open == 'false'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          base_branch: main
+          branch_prefix: cursor/claude-auto-
+          prompt: |
+            Kamu adalah reviewer harian untuk repo ini. Lakukan satu perbaikan kecil yang nyata dari hasil debug atau code review.
+
+            Aturan:
+            - Maksimal satu masalah dan satu commit pada branch yang sedang di-checkout: ${{ steps.work.outputs.branch }}
+            - Jangan git push, jangan merge, jangan membuka pull request, dan jangan mengubah branch main.
+            - Jangan mengubah batas 5 commit/hari atau mekanisme yang menjaganya. File yang dilarang: src/lib/git/daily-main-commit-limit.ts, scripts/check-daily-main-commit-limit.ts, .github/workflows/daily-main-commit-limit.yml, .github/workflows/claude-auto-commit.yml, .githooks/pre-push.
+            - Jangan membaca, mencetak, atau menulis secret, file .env, atau token.
+            - Perbaikan harus lulus npm run lint, npm run typecheck, dan npm test.
+            - Jika tidak ada bug atau masalah review yang konkret, jangan mengubah file apa pun dan jelaskan bahwa tidak ada yang perlu diperbaiki.
+            - Jangan menambah fitur baru, jangan mengubah scope produk, dan jangan membuat commit kosong.
+          claude_args: --max-turns 6 --allowedTools "Read,Glob,Grep,Edit,Write,Bash(npm *),Bash(npx *),Bash(git status*),Bash(git diff*),Bash(git log*),Bash(git add*),Bash(git commit*)"
+
+      - name: Commit, test, and squash-merge to main
+        if: steps.quota.outputs.allowed == 'true' && steps.existing.outputs.open == 'false' && steps.claude.outputs.conclusion == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WORK_BRANCH: ${{ steps.work.outputs.branch }}
+          CLAUDE_BRANCH: ${{ steps.claude.outputs.branch_name }}
+          GIT_BRANCH: origin/main
+          COMMIT_LIMIT_TZ: Asia/Jakarta
+          MAIN_DAILY_COMMIT_LIMIT: "5"
+          PENDING_MAIN_COMMITS: "1"
+        run: |
+          set -euo pipefail
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git fetch origin main
+
+          branch="$WORK_BRANCH"
+          if [ -n "${CLAUDE_BRANCH}" ] && git show-ref --verify --quiet "refs/heads/${CLAUDE_BRANCH}"; then
+            branch="$CLAUDE_BRANCH"
+          fi
+          git checkout "$branch"
+
+          if ! git diff --quiet || ! git diff --cached --quiet; then
+            git add -A
+            git reset -- .env .env.local .env.*.local 2>/dev/null || true
+            if ! git diff --cached --quiet; then
+              git commit -m "fix: daily debug and code review"
+            fi
+          fi
+
+          if [ "$(git rev-list --count origin/main..HEAD)" = "0" ]; then
+            echo "Claude made no changes. Nothing was pushed."
+            exit 0
+          fi
+
+          forbidden="$(git diff --name-only origin/main | grep -E '^(src/lib/git/daily-main-commit-limit\.ts|scripts/check-daily-main-commit-limit\.ts|\.github/workflows/daily-main-commit-limit\.yml|\.github/workflows/claude-auto-commit\.yml|\.githooks/pre-push|\.env(\..*)?)$' || true)"
+          if [ -n "$forbidden" ]; then
+            echo "Refusing to publish changes to commit-limit controls or env files:"
+            printf '%s\n' "$forbidden"
+            exit 1
+          fi
+
+          npm run lint
+          npm run typecheck
+          npm test
+
+          git fetch origin main
+          if ! npm run --silent check:main-commit-limit; then
+            echo "Daily limit was reached while Claude was running. Changes were not pushed."
+            exit 0
+          fi
+
+          git push -u origin "HEAD:${branch}"
+          pr_url="$(gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "fix: daily debug and code review" \
+            --body "Perbaikan otomatis dari Claude API. Digabung ke main tanpa menunggu persetujuan manual, selama kuota 5 commit/hari belum penuh dan pemeriksaan lulus.")"
+          echo "Opened ${pr_url}"
+          pr="$(gh pr view "$branch" --json number -q .number)"
+          head_sha="$(gh pr view "$pr" --json headRefOid -q .headRefOid)"
+          gh pr merge "$pr" --squash --delete-branch --admin --match-head-commit "$head_sha"
