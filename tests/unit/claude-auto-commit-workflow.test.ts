@@ -6,6 +6,7 @@ const workflow = readFileSync(".github/workflows/claude-auto-commit.yml", "utf8"
 describe("claude auto-commit workflow", () => {
   it("bills Claude through the repository API secret", () => {
     expect(workflow).toContain("anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}");
+    expect(workflow).toContain("--model claude-haiku-5-5");
     expect(workflow).not.toMatch(/sk-ant-/);
   });
 

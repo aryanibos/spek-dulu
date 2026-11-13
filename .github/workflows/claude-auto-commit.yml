@@ -127,7 +127,7 @@ jobs:
             - Perbaikan harus lulus npm run lint, npm run typecheck, dan npm test.
             - Jika tidak ada bug atau masalah review yang konkret, jangan mengubah file apa pun dan jelaskan bahwa tidak ada yang perlu diperbaiki.
             - Jangan menambah fitur baru, jangan mengubah scope produk, dan jangan membuat commit kosong.
-          claude_args: --max-turns 6 --allowedTools "Read,Glob,Grep,Edit,Write,Bash(npm *),Bash(npx *),Bash(git status*),Bash(git diff*),Bash(git log*),Bash(git add*),Bash(git commit*)"
+          claude_args: --model claude-haiku-5-5 --max-turns 6 --allowedTools "Read,Glob,Grep,Edit,Write,Bash(npm *),Bash(npx *),Bash(git status*),Bash(git diff*),Bash(git log*),Bash(git add*),Bash(git commit*)"
 
       - name: Commit, test, and squash-merge to main
         if: steps.quota.outputs.allowed == 'true' && steps.existing.outputs.open == 'false' && steps.claude.outputs.conclusion == 'success'
