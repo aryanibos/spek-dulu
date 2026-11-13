@@ -129,6 +129,43 @@ jobs:
             - Jangan menambah fitur baru, jangan mengubah scope produk, dan jangan membuat commit kosong.
           claude_args: --model claude-haiku-5-5 --max-turns 6 --allowedTools "Read,Glob,Grep,Edit,Write,Bash(npm *),Bash(npx *),Bash(git status*),Bash(git diff*),Bash(git log*),Bash(git add*),Bash(git commit*)"
 
+      - name: Show the Claude API error
+        if: failure() && steps.claude.outcome == 'failure'
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          set -euo pipefail
+          if [ -z "${EXECUTION_FILE}" ] || [ ! -f "${EXECUTION_FILE}" ]; then
+            echo "Claude failed before writing an execution file."
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+
+          with open(os.environ["EXECUTION_FILE"], encoding="utf-8") as handle:
+              data = json.load(handle)
+          if isinstance(data, dict):
+              data = [data]
+          results = [item for item in data if isinstance(item, dict) and item.get("type") == "result"]
+          last = results[-1] if results else {}
+          result = re.sub(r"sk-ant-[A-Za-z0-9_\-]+", "[redacted]", str(last.get("result") or ""))
+          status = last.get("api_error_status")
+          print(f"api_error_status: {status}")
+          print(f"terminal_reason: {last.get('terminal_reason')}")
+          print(f"result: {result[:500]}")
+          if status == 401:
+              print("The API key in ANTHROPIC_API_KEY was rejected. Replace the GitHub secret with a new key from platform.claude.com/settings/keys, with no extra spaces or quotes.")
+          elif status == 429:
+              print("Claude refused the request because the account hit a rate or session limit. Wait for the reset, then run the workflow again.")
+          elif status in (400, 404):
+              print("Claude rejected the model or request. The workflow is pinned to claude-haiku-5-5.")
+          elif status == 402:
+              print("The Claude Console credit balance is too low for this request.")
+          PY
+          exit 1
+
       - name: Commit, test, and squash-merge to main
         if: steps.quota.outputs.allowed == 'true' && steps.existing.outputs.open == 'false' && steps.claude.outputs.conclusion == 'success'
         env:

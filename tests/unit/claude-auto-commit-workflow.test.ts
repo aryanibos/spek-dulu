@@ -7,7 +7,9 @@ describe("claude auto-commit workflow", () => {
   it("bills Claude through the repository API secret", () => {
     expect(workflow).toContain("anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}");
     expect(workflow).toContain("--model claude-haiku-5-5");
-    expect(workflow).not.toMatch(/sk-ant-/);
+    expect(workflow).toContain("api_error_status");
+    expect(workflow).toContain("sk-ant-[A-Za-z0-9_\\-]+");
+    expect(workflow).not.toMatch(/sk-ant-[A-Za-z0-9_\-]{8,}/);
   });
 
   it("checks the daily main quota before calling Claude", () => {
