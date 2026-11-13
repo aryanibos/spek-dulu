@@ -17,7 +17,10 @@ import {
 } from "./full-docs";
 import { renderFullPrd } from "./prd";
 
-const DOC_META: Record<DocumentKey, { fileName: string; title: string }> = {
+const DOC_META: Record<
+  DocumentKey,
+  { fileName: SpecDocument["fileName"]; title: string }
+> = {
   "01_PRD": { fileName: "01_PRD.md", title: "Product Requirement Document" },
   "02_DESIGN_SYSTEM": { fileName: "02_DESIGN_SYSTEM.md", title: "Design System" },
   "03_INFORMATION_ARCHITECTURE": {

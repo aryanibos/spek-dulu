@@ -86,6 +86,12 @@ Project documentation lives in [`doc/`](./doc):
 - [`doc/DESIGN.md`](./doc/DESIGN.md) — design system
 - [`doc/PRD.md`](./doc/PRD.md) — product requirements
 
+## Claude auto-commit
+
+Scheduled debug and code review runs through GitHub Actions and the Claude API, using `claude-haiku-5-5`. Each run can land one squash commit on `main`, and it stops at 5 commits per Jakarta day. The workflow does not call Claude after that quota is full.
+
+Add a repository secret named `ANTHROPIC_API_KEY` (Claude Console → API keys). The key stays in GitHub Secrets. The schedule runs only after this workflow is on `main`, at 08:00, 11:00, 14:00, 17:00, and 20:00 Asia/Jakarta. `workflow_dispatch` runs the same quota check.
+
 ## Deploy
 
 Deploy this repository to Vercel. Set `GEMINI_API_KEY` in project environment variables for live generation. Core screens remain usable in demo mode without it.
